@@ -2,143 +2,148 @@
 #ifndef IO_FUNCTIONS_HPP
 #define IO_FUNCTIONS_HPP
 
-// Standard library files
+// STL Files
 #include <ostream>
 #include <istream>
-#include <cstdint>
 
-template < class _Arg, class _Elem, class _Traits >
-class istream_capture;
-
-template < class _Arg, class _Elem, class _Traits >
-istream_capture< _Arg, _Elem, _Traits > operator >> ( std::basic_istream< _Elem, _Traits >& stream, void ( * function)( std::basic_ostream< _Elem, _Traits >&, _Arg ) );
-
-template < class _Arg, class _Elem, class _Traits >
-class istream_capture
+// Print a binary value to the output stream.
+template < class _Int, class _Elem, class _Traits >
+inline std::basic_ostream< _Elem, _Traits >& binary( std::basic_ostream< _Elem, _Traits >& output, const _Int& value )
 {
-public:
-	using istream		= std::basic_istream< _Elem, _Traits >;
-	using function_arg	= _Arg;
-	using function_ptr	= void (*)( istream&, function_arg );
+	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
+	
+	constexpr char bits_per_byte = 8;
+	
+	for ( int bit = sizeof( _Int ) * bits_per_byte; bit > 0; )
+		output << ( ( value >> --bit ) & 1 );
+	
+	return output;
+}
 
-private:
-	istream_capture() = delete;
-	istream_capture( istream& stream, function_ptr function ) : function( function ), stream( stream ) {}
+template < class _Int, class _Elem, class _Traits >
+inline std::basic_ostream< _Elem, _Traits >& binary( std::basic_ostream< _Elem, _Traits >& output, _Int& value )
+{
+	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
+	
+	constexpr char bits_per_byte = 8;
+	
+	for ( int bit = sizeof( _Int ) * bits_per_byte; bit > 0; )
+		output << ( ( value >> --bit ) & 1 );
+	
+	return output;
+}
 
-public:
-	template < class _Arg_new, class _Elem_new, class _Traits_new >
-	friend istream_capture< _Arg_new, _Elem_new, _Traits_new > operator >> ( std::basic_istream< _Elem_new, _Traits_new >& stream, void ( * function)( std::basic_ostream< _Elem, _Traits >&, _Arg_new ) )
-	{ return istream_capture< _Arg_new, _Elem_new, _Traits_new >( stream, function ); }
+// Print a binary value to the output stream.
+template < class _Int, class _Elem, class _Traits >
+inline std::basic_ostream< _Elem, _Traits >& binary( std::basic_ostream< _Elem, _Traits >& output, _Int&& value )
+{
+	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
+	
+	constexpr char bits_per_byte = 8;
+	
+	for ( int bit = sizeof( _Int ) * bits_per_byte; bit > 0; )
+		output << ( ( value >> --bit ) & 1 );
+	
+	return output;
+}
 
-	istream& operator >> ( function_arg& argument )
+// Don't allow const types when reading in.
+template < class _Int, class _Elem, class _Traits >
+inline std::basic_istream< _Elem, _Traits >& binary( std::basic_istream< _Elem, _Traits >& input, const _Int& value ) = delete;
+
+// Read a binary integer from the input stream.
+template < class _Int, class _Elem, class _Traits >
+inline std::basic_istream< _Elem, _Traits >& binary( std::basic_istream< _Elem, _Traits >& input, _Int& value )
+{
+	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
+	
+	constexpr char bits_per_byte = 8;
+
+	value = 0;
+	_Elem bit;
+	
+	for ( int count = 0; count < sizeof( _Int ) * bits_per_byte; ++count )
 	{
-		function( stream, argument );
-		return stream;
-	}
-	istream& operator >> ( function_arg&& argument )
-	{
-		function( stream, argument );
-		return stream;
-	}
+		input.get( bit );
+		switch ( bit )
+		{
+		// Recieved a 0 or 1 binary notation.
+		case static_cast< _Elem >( '0' ):
+			value = value << 1; // Shift all bits left 1
+			break;
+		case static_cast< _Elem >( '1' ):
+			value = ( value << 1 ) + 1; // Shift all bits left 1 and add 1.
+			break;
 
-private:
-	function_ptr function;
-	istream& stream;
+		// Natural end of a set of binary input, return.
+		case static_cast< _Elem >( ' ' ):
+		case static_cast< _Elem >( '\n' ):
+			return input;
+
+		// Unnatural end of binary input, reached an invalid character.
+		default:
+			input.setstate( std::ios_base::failbit );
+			value = 0;
+			return input;
+		}
+	}
+	
+	// Reached maximum depth of bits for the type of `_Int`, return.
+	return input;
+}
+
+// Struct to capture the binary reference to perform a standard operator << or >> read/write.
+template < class _Int >
+struct binary_streamable
+{
+	static_assert( std::is_integral_v< _Int >, "The struct `binary_streamable` requires an integral type!" );
+	
+	template < class _Int_2, class _Char, class _Traits >
+	friend std::basic_ostream< _Char, _Traits >& operator << ( std::basic_ostream< _Char, _Traits >& stream, binary_streamable< _Int_2 >&& obj )
+	{ return binary( stream, obj.value ); }
+
+	template < class _Int_2, class _Char, class _Traits >
+	friend std::basic_istream< _Char, _Traits >& operator >> ( std::basic_istream< _Char, _Traits >& stream, binary_streamable< _Int_2 >&& obj )
+	{ return binary( stream, obj.value ); }
+
+	_Int& value;
 };
 
-template < class _Arg, class _Elem, class _Traits >
-class ostream_capture;
-
-template < class _Arg, class _Elem, class _Traits >
-ostream_capture< _Arg, _Elem, _Traits > operator << ( std::basic_ostream< _Elem, _Traits >& stream, void ( * function )( std::basic_ostream< _Elem, _Traits >&, _Arg ) );
-
-template < class _Arg, class _Elem, class _Traits >
-class ostream_capture
+// Create an object that will read/print the number in binary format to the stream.
+template < class _Int >
+inline binary_streamable< _Int > binary( _Int& value )
 {
-public:
-	using ostream		= std::basic_ostream< _Elem, _Traits >;
-	using function_arg	= _Arg;
-	using function_ptr	= void (*)( ostream&, function_arg );
+	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
+	return binary_streamable< _Int >{ value };
+}
 
-private:
-	ostream_capture() = delete;
-	ostream_capture( ostream& stream, function_ptr function ) : function( function ), stream( stream ) {}
+// Struct to capture a constant copy of the integer to print using the standard operator << write method.
+template < class _Int >
+struct binary_printable
+{
+	static_assert( std::is_integral_v< _Int >, "The struct `binary_printable` requires an integral type!" );
 	
-public:
-	template < class _Arg_new, class _Elem_new, class _Traits_new >
-	friend ostream_capture< _Arg_new, _Elem_new, _Traits_new > operator << ( std::basic_ostream< _Elem_new, _Traits_new >& stream, void ( * function )( std::basic_ostream< _Elem_new, _Traits_new >&, _Arg_new ) )
-	{ return ostream_capture< _Arg_new, _Elem_new, _Traits_new >( stream, function ); }
-	
-	ostream& operator << ( const function_arg& argument )
-	{
-		function( stream, argument );
-		return stream;
-	}
-	ostream& operator << ( function_arg&& argument )
-	{
-		function( stream, argument );
-		return stream;
-	}
-	
-private:
-	function_ptr function;
-	ostream& stream;
+	template < class _Int_2, class _Char, class _Traits >
+	friend std::basic_ostream< _Char, _Traits >& operator << ( std::basic_ostream< _Char, _Traits >& stream, binary_printable< _Int_2 >&& obj )
+	{ return binary( stream, obj.value ); }
+
+	const _Int value;
 };
 
-// Unimplemented so far
-template < class _Arg, class _Elem, class _Traits = std::char_traits< _Elem > >
-class iostream_capture
+// Print a binary value to an output stream.
+template < class _Int >
+inline binary_printable< _Int > binary( const _Int& value )
 {
-	static_assert( false, "This class has not been implemented yet!" );
-};
+	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
+	return binary_printable< _Int >{ value };
+}
 
-// The functions are provided how they are because they provide the ability to perform type-deduction.
-// If we were to use template functions (which I had tried), trying to use the function:
-// `friend ostream_capture< _Arg_new, _Elem_new, _Traits_new > operator << ( std::basic_ostream< _Elem_new, _Traits_new >& stream, void ( * function )( std::basic_ostream< _Elem_new, _Traits_new >&, _Arg_new ) )`
-// Would fail type deduction even though it should be possible to resolve using the same types from the ostream to match the selected template function.
-
-// Prints a `uint8_t` to the the `std::ostream&` in binary format.
-void u8_binary( std::ostream& output, uint8_t value );
-// Prints a `int8_t` to the the `std::ostream&` in binary format.
-void i8_binary( std::ostream& output, int8_t value );
-// Prints a `uint16_t` to the the `std::ostream&` in binary format.
-void u16_binary( std::ostream& output, uint16_t value );
-// Prints a `int16_t` to the the `std::ostream&` in binary format.
-void i16_binary( std::ostream& output, int16_t value );
-// Prints a `uint32_t` to the the `std::ostream&` in binary format.
-void u32_binary( std::ostream& output, uint32_t value );
-// Prints a `int32_t` to the the `std::ostream&` in binary format.
-void i32_binary( std::ostream& output, int32_t value );
-// Prints a `uint64_t` to the the `std::ostream&` in binary format.
-void u64_binary( std::ostream& output, uint64_t value );
-// Prints a `int64_t` to the the `std::ostream&` in binary format.
-void i64_binary( std::ostream& output, int64_t value );
-
-// Standardized function that can handle all unsigned integral types by converting them to the `uint64_t` type and then printing them in binary format to the `std::ostream&`.
-void ubinary( std::ostream& output, uint64_t value );
-// Standardized function that can handle all signed integral types by converting them to the `int64_t` type and then printing them in binary format to the `std::ostream&`.
-void binary( std::ostream& output, int64_t value );
-
-// Prints a `uint8_t` to the the `std::wostream&` in binary format.
-void u8_binary( std::wostream& output, uint8_t value );
-// Prints a `int8_t` to the the `std::wostream&` in binary format.
-void i8_binary( std::wostream& output, int8_t value );
-// Prints a `uint16_t` to the the `std::wostream&` in binary format.
-void u16_binary( std::wostream& output, uint16_t value );
-// Prints a `int16_t` to the the `std::wostream&` in binary format.
-void i16_binary( std::wostream& output, int16_t value );
-// Prints a `uint32_t` to the the `std::wostream&` in binary format.
-void u32_binary( std::wostream& output, uint32_t value );
-// Prints a `int32_t` to the the `std::wostream&` in binary format.
-void i32_binary( std::wostream& output, int32_t value );
-// Prints a `uint64_t` to the the `std::wostream&` in binary format.
-void u64_binary( std::wostream& output, uint64_t value );
-// Prints a `int64_t` to the the `std::wostream&` in binary format.
-void i64_binary( std::wostream& output, int64_t value );
-
-// Standardized function that can handle all unsigned integral types by converting them to the `uint64_t` type and then printing them in binary format to the `std::wostream&`.
-void ubinary( std::wostream& output, uint64_t value );
-// Standardized function that can handle all signed integral types by converting them to the `int64_t` type and then printing them in binary format to the `std::wostream&`.
-void binary( std::wostream& output, int64_t value );
+// Print a binary value to an output stream.
+template < class _Int >
+inline binary_printable< _Int > binary( _Int&& value )
+{
+	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
+	return binary_printable< _Int >{ value };
+}
 
 #endif // IO_FUNCTIONS_HPP
