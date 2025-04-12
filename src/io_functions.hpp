@@ -6,16 +6,41 @@
 #include <ostream>
 #include <istream>
 
+// This is a helper function, do not call it directly.
+template < class _Int, class _Elem, class _Traits >
+inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const _Int& value )
+{
+	static_assert( std::is_integral_v< _Int >, "The function `do_binary_print` requires an integral type!" );
+	
+	constexpr unsigned char bits = 8 * sizeof( _Int );
+
+	const size_t& available = output.width();
+
+	// Prepare stream and check state.
+	typename std::basic_ostream< _Elem, _Traits >::sentry my_sentry( output );
+	if ( !my_sentry ) return;
+	
+	// Check available space, if not enough, set badbit and return.
+	if ( output.width() > bits )
+	{
+		output.setstate( std::ios_base::badbit );
+		return;
+	}
+
+	std::basic_streambuf< _Elem, _Traits >* stream_buffer = output.rdbuf();
+	for ( int bit = bits; bit > 0; )
+		stream_buffer->sputc( _Traits::to_char_type( ( ( value >> --bit ) & 1 ) + '0' ) );
+
+	output.width( available - bits );
+}
+
 // Print a binary value to the output stream.
 template < class _Int, class _Elem, class _Traits >
 inline std::basic_ostream< _Elem, _Traits >& binary( std::basic_ostream< _Elem, _Traits >& output, const _Int& value )
 {
 	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
 	
-	constexpr char bits_per_byte = 8;
-	
-	for ( int bit = sizeof( _Int ) * bits_per_byte; bit > 0; )
-		output << ( ( value >> --bit ) & 1 );
+	do_binary_print( output, value );
 	
 	return output;
 }
@@ -25,10 +50,7 @@ inline std::basic_ostream< _Elem, _Traits >& binary( std::basic_ostream< _Elem, 
 {
 	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
 	
-	constexpr char bits_per_byte = 8;
-	
-	for ( int bit = sizeof( _Int ) * bits_per_byte; bit > 0; )
-		output << ( ( value >> --bit ) & 1 );
+	do_binary_print( output, value );
 	
 	return output;
 }
@@ -39,10 +61,7 @@ inline std::basic_ostream< _Elem, _Traits >& binary( std::basic_ostream< _Elem, 
 {
 	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
 	
-	constexpr char bits_per_byte = 8;
-	
-	for ( int bit = sizeof( _Int ) * bits_per_byte; bit > 0; )
-		output << ( ( value >> --bit ) & 1 );
+	do_binary_print( output, value );
 	
 	return output;
 }
@@ -58,14 +77,17 @@ inline std::basic_istream< _Elem, _Traits >& binary( std::basic_istream< _Elem, 
 	static_assert( std::is_integral_v< _Int >, "The function `binary` requires an integral type!" );
 	
 	constexpr char bits_per_byte = 8;
+	
+	// Prepare the input stream for a read operation, if a failure occurs return instantly.
+	typename std::basic_istream< _Elem, _Traits >::sentry my_sentry( input );
+	if ( !my_sentry ) return input;
 
+	std::basic_streambuf< _Elem, _Traits >* stream_buffer = input.rdbuf();
 	value = 0;
-	_Elem bit;
 	
 	for ( int count = 0; count < sizeof( _Int ) * bits_per_byte; ++count )
 	{
-		input.get( bit );
-		switch ( bit )
+		switch ( _Traits::to_char_type( stream_buffer->sgetc() ) )
 		{
 		// Recieved a 0 or 1 binary notation.
 		case static_cast< _Elem >( '0' ):
@@ -75,9 +97,14 @@ inline std::basic_istream< _Elem, _Traits >& binary( std::basic_istream< _Elem, 
 			value = ( value << 1 ) + 1; // Shift all bits left 1 and add 1.
 			break;
 
-		// Natural end of a set of binary input, return.
+		// Natural end of a binary input, return.
 		case static_cast< _Elem >( ' ' ):
 		case static_cast< _Elem >( '\n' ):
+			return input;
+
+		// End of file, if we read nothing, set failbit and eofbit, otherwise just set eofbit.
+		case _Traits::eof():
+			input.setstate( ( count == 0 ) ? std::ios_base::eofbit | std::ios_base::failbit : std::ios_base::eofbit );
 			return input;
 
 		// Unnatural end of binary input, reached an invalid character.
@@ -86,6 +113,7 @@ inline std::basic_istream< _Elem, _Traits >& binary( std::basic_istream< _Elem, 
 			value = 0;
 			return input;
 		}
+		stream_buffer->sbumpc();
 	}
 	
 	// Reached maximum depth of bits for the type of `_Int`, return.
