@@ -6,6 +6,11 @@
 #include <ostream>
 #include <istream>
 
+/*
+ - @section `binary` i/o functionals
+ - @{
+ */
+
 // This is a helper function, do not call it directly.
 template < class _Int, class _Elem, class _Traits >
 inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const _Int& value )
@@ -174,4 +179,16 @@ inline binary_printable< _Int > binary( _Int&& value )
 	return binary_printable< _Int >{ value };
 }
 
+/*
+ - @}
+ -
+ - @section `binary` I/O facet(s)
+ - @{
+ */
+
+ // TODO: More research on facets, and then create one that can override std::num_get and std::num_put for our binary printing so we can use it to set binary to be the default.
+
+ /*
+  - @}
+  */
 #endif // IO_FUNCTIONS_HPP
