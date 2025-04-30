@@ -5,6 +5,36 @@
 // STL Files
 #include <ostream>
 #include <istream>
+#include <iterator>
+#include <cstdint>
+
+void get_binary_cstring( char* buf, size_t size, const uint64_t& value );
+
+template < class _Elem, class _Traits >
+inline bool Fill( std::basic_streambuf< _Elem, _Traits >* stream_buffer, const _Elem& fill_char, const std::streamsize& count )
+{
+	for ( std::streamsize index = 0; index < count; ++index )
+		if ( stream_buffer->sputc( fill_char ) == _Traits::eof() )
+			return false;
+	return true;
+}
+
+template < class _Elem, class _Traits >
+inline bool Put( std::basic_streambuf< _Elem, _Traits >* stream_buffer, const _Elem* buffer, const std::streamsize& count )
+{
+	for( std::streamsize index = 0; index < count; ++index )
+		if ( stream_buffer->sputc( buffer[index] ) == _Traits::eof() )
+			return false;
+	return true;
+}
+
+template < class _Elem, class _Traits >
+inline bool fill( std::basic_ostream< _Elem, _Traits >& output, const std::streamsize& count )
+{ return Fill( output.rdbuf(), output.fill(), count ); }
+
+template < class _Elem, class _Traits >
+inline bool put( std::basic_ostream< _Elem, _Traits >& output, const _Elem* buffer, const std::streamsize& count )
+{ return Put( output.rdbuf(), buffer, count ); }
 
 /*
  - @section `binary` i/o functionals
@@ -17,26 +47,53 @@ inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const
 {
 	static_assert( std::is_integral_v< _Int >, "The function `do_binary_print` requires an integral type!" );
 	
-	constexpr unsigned char bits = 8 * sizeof( _Int );
+	constexpr size_t bit_count = 8 * sizeof( _Int );
+	constexpr size_t max_size = bit_count + 2; // 2 for the prefix 0b.
 
-	const size_t& available = output.width();
+	const size_t prefix_size = output.flags() & std::ios_base::showbase ? 2 : 0; // Prefix size, 2 or 0 depending on whether base is shown.
 
+	char buffer[ max_size ] = { '0', ( output.flags() & std::ios_base::uppercase ) ? 'B' : 'b' }; // Buffer to hold the binary string, greedily add prefix since it may be overwritten or used.
+	get_binary_cstring( buffer, bit_count, value ); // Fill the buffer with the binary string.
+	
+	const size_t output_size = bit_count + prefix_size; // Total size of output.
+	
 	// Prepare stream and check state.
-	typename std::basic_ostream< _Elem, _Traits >::sentry my_sentry( output );
+	typename std::basic_ostream< _Elem, _Traits >::sentry my_sentry( output ); // We must hold this lifetime so that the unitbuf flag is handled correctly.
 	if ( !my_sentry ) return;
 	
-	// Check available space, if not enough, set badbit and return.
-	if ( output.width() > bits )
+	const std::ctype< _Elem >& char_facet = std::use_facet< std::ctype< _Elem > >( output.getloc() );
+
+	_Elem fixed_buffer[ max_size ]; // Prefix using the proper char type.
+
+	char_facet.widen( buffer, buffer + max_size, fixed_buffer); // Convert the prefix to the proper char type.
+	
+	std::streamsize fillspace = output.width() - output_size;
+	if ( fillspace < 0 ) fillspace = 0;
+
+	const std::ios_base::fmtflags adjustfield = output.flags() & std::ios_base::adjustfield;
+	
+	// Right align the output, by filling the left side with the fill character.
+	if ( adjustfield != std::ios_base::left && adjustfield != std::ios_base::internal )
 	{
-		output.setstate( std::ios_base::badbit );
-		return;
+		fill( output, fillspace );
+		fillspace = 0;
 	}
 
-	std::basic_streambuf< _Elem, _Traits >* stream_buffer = output.rdbuf();
-	for ( int bit = bits; bit > 0; )
-		stream_buffer->sputc( _Traits::to_char_type( ( ( value >> --bit ) & 1 ) + '0' ) );
+	put( output, fixed_buffer, prefix_size ); // Print the prefix, prints nothing if showbase bit is off.
+	
+	// Internal fill, fills space between the prefix and the binary string.
+	if ( adjustfield == std::ios_base::internal )
+	{
+		fill( output, fillspace );
+		fillspace = 0;
+	}
 
-	output.width( available - bits );
+	put( output, fixed_buffer + prefix_size, bit_count ); // Print the binary string.
+	
+	// Left align the output, by filling the right side with the fill character.
+	fill( output, fillspace ); // Fill the remaining space.
+
+	output.width( 0 );
 }
 
 // Print a binary value to the output stream.
@@ -74,6 +131,50 @@ inline std::basic_ostream< _Elem, _Traits >& binary( std::basic_ostream< _Elem, 
 // Don't allow const types when reading in.
 template < class _Int, class _Elem, class _Traits >
 inline std::basic_istream< _Elem, _Traits >& binary( std::basic_istream< _Elem, _Traits >& input, const _Int& value ) = delete;
+
+template < class _Int, class _Elem, class _Traits >
+inline void do_binary_read( std::basic_istream< _Elem, _Traits >& input, _Int& value )
+{
+	static_assert( std::is_integral_v< uint64_t >, "The function `do_binary_read` requires an integral type!" );
+	
+	constexpr char bits_per_byte = 8;
+	
+	// Prepare the input stream for a read operation, if a failure occurs return instantly.
+	typename std::basic_istream< char >::sentry my_sentry( input );
+	if ( !my_sentry ) return;
+
+	std::basic_streambuf< char >* stream_buffer = input.rdbuf();
+	value = 0;
+	
+	for ( int count = 0; count < sizeof( uint64_t ) * bits_per_byte; ++count )
+	{
+		switch ( stream_buffer->sgetc() )
+		{
+		case '0':
+			value = value << 1; // Shift all bits left 1
+			break;
+		case '1':
+			value = ( value << 1 ) + 1; // Shift all bits left 1 and add 1.
+			break;
+
+		case ' ':
+		case '\n':
+			return;
+
+		case std::char_traits< char >::eof():
+			input.setstate( ( count == 0 ) ? std::ios_base::eofbit | std::ios_base::failbit : std::ios_base::eofbit );
+			return;
+
+		default:
+			input.setstate( std::ios_base::failbit );
+			value = 0;
+			return;
+		}
+		stream_buffer->sbumpc();
+	}
+	
+	return;
+}
 
 // Read a binary integer from the input stream.
 template < class _Int, class _Elem, class _Traits >
