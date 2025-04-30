@@ -1,6 +1,6 @@
 #include "io_functions.hpp"
 
-void get_binary_cstring( char* buffer, size_t size, const uint64_t& value )
+size_t get_binary_cstring( char* buffer, size_t size, const uint64_t& value )
 {
 	bool ignore_zero = true; // Ignore leading zeros.
 
@@ -19,4 +19,6 @@ void get_binary_cstring( char* buffer, size_t size, const uint64_t& value )
 			buffer[ index++ ] = '0';
 		}
 	}
+
+	return index; // Return the number of bits written to the buffer.
 }

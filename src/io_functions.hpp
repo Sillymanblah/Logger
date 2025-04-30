@@ -8,7 +8,7 @@
 #include <iterator>
 #include <cstdint>
 
-void get_binary_cstring( char* buf, size_t size, const uint64_t& value );
+size_t get_binary_cstring( char* buf, size_t size, const uint64_t& value );
 
 template < class _Elem, class _Traits >
 inline bool Fill( std::basic_streambuf< _Elem, _Traits >* stream_buffer, const _Elem& fill_char, const std::streamsize& count )
@@ -51,10 +51,9 @@ inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const
 	constexpr size_t max_size = bit_count + 2; // 2 for the prefix 0b.
 
 	const size_t prefix_size = output.flags() & std::ios_base::showbase ? 2 : 0; // Prefix size, 2 or 0 depending on whether base is shown.
-	const size_t output_size = bit_count + prefix_size; // Total size of output.
-
+	
 	char buffer[ max_size ] = { '0', ( output.flags() & std::ios_base::uppercase ) ? 'B' : 'b' }; // Buffer to hold the binary string, greedily add prefix since it may be overwritten or used.
-	get_binary_cstring( buffer + prefix_size, bit_count, value ); // Fill the buffer with the binary string.
+	const size_t output_size = prefix_size + get_binary_cstring( buffer + prefix_size, bit_count, value ); // Fill the buffer with the binary string, and get the size of the buffer after filling.
 	
 	// Prepare stream and check state.
 	typename std::basic_ostream< _Elem, _Traits >::sentry my_sentry( output ); // We must hold this lifetime so that the unitbuf flag is handled correctly.
