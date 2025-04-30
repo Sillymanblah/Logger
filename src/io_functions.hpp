@@ -60,8 +60,8 @@ inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const
 	if ( !my_sentry ) return;
 	std::ios_base::iostate state = std::ios_base::goodbit;
 	
-	_Elem final_buffer[ max_size ]; // Prefix using the proper char type.
-	std::use_facet< std::ctype< _Elem > >( output.getloc() ).widen( buffer, buffer + max_size, final_buffer); // Convert the prefix to the proper char type.
+	std::basic_string< _Elem > printed( output_size, _Elem( 0 ) ); // Prefix using the proper char type.
+	std::use_facet< std::ctype< _Elem > >( output.getloc() ).widen( buffer, buffer + output_size, printed.data() ); // Convert the prefix to the proper char type.
 	
 	std::streamsize fillspace = output.width( 0 ) - output_size;
 
@@ -75,7 +75,7 @@ inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const
 	}
 
 	// Print the prefix, prints nothing if showbase bit is off.
-	if ( !put( output, final_buffer, prefix_size ) ) state = std::ios_base::badbit; // If the fill fails, set badbit.
+	if ( !put( output, printed.data(), prefix_size ) ) state = std::ios_base::badbit; // If the fill fails, set badbit.
 	
 	// Internal fill, fills space between the prefix and the binary string.
 	if ( adjustfield == std::ios_base::internal )
@@ -85,7 +85,7 @@ inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const
 	}
 
 	// Print the binary string.
-	if ( !put( output, final_buffer + prefix_size, bit_count) ) state = std::ios_base::badbit; // If the put fails, set badbit.
+	if ( !put( output, printed.data() + prefix_size, output_size - prefix_size) ) state = std::ios_base::badbit; // If the put fails, set badbit.
 	
 	// Left align the output, by filling the right side with the fill character.
 	if( !fill( output, fillspace ) ) state = std::ios_base::badbit; // If the fill fails, set badbit.
