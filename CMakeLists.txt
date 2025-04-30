@@ -14,6 +14,7 @@ set(
 add_executable(
 	io_functions_test
 	src/tests/io_functions.cpp
+	src/io_functions.cpp
 )
 
 add_test(
