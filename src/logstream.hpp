@@ -162,6 +162,13 @@ public:
 		this->close();
 	}
 
+	std::basic_string< char_type > time_format( const char_type* format )
+	{
+		std::basic_string< char_type > previous_format( this->timestamp_format );
+		this->timestamp_format = format;
+		return previous_format;
+	}
+
 private:
 	static constexpr const char_type* level_tag( level&& log_level )
 	{
@@ -186,10 +193,10 @@ private:
 		this->rdbuf()->sputn( tag, std::strlen( tag ) );
 	}
 
-	void print_timestamp()
+	std::basic_string< _Elem > timestamp()
 	{
 		std::chrono::zoned_time timestamp{ std::chrono::current_zone(), std::chrono::system_clock::now() };
-		*this << std::vformat( time_format, std::make_format_args( timestamp ) );
+		return std::vformat( this->timestamp_format, std::make_format_args( timestamp ) );
 	}
 
 public:
@@ -243,20 +250,22 @@ public:
 	}
 
 private:
-	const std::basic_string< _Elem > time_format;
+	const std::basic_string< _Elem > timestamp_format = "%Y-%m-%d %H:%M:%S %Z"; // Default time format for the log stream.
 };
 
 template < class _Elem >
 class Time_Format
 {
 public:
-	Time_Format( const _Elem* format ) : format( format ) {}
-	Time_Format( const std::basic_string< _Elem >& format ) : format( format ) {}
-	Time_Format( const std::basic_string_view< _Elem >& format ) : format( format ) {}
+	explicit Time_Format( const _Elem* format ) : format( format ) {}
+	explicit Time_Format( const std::basic_string< _Elem >& format ) : format( format ) {}
+	explicit Time_Format( std::basic_string< _Elem >&& format ) : format( format ) {}
+	explicit Time_Format( const std::basic_string_view< _Elem >& format ) : format( format ) {}
+	explicit Time_Format( std::basic_string_view< _Elem >&& format ) : format( format ) {}
 
-	friend basic_logstream< _Elem >& operator << ( basic_logstream< _Elem >& output, const Time_Format& format )
+	friend basic_logstream< _Elem >& operator << ( basic_logstream< _Elem >& output, Time_Format< _Elem >&& format )
 	{
-		output.time_format( format.format );
+		output.time_format( std::move( format.format ) );
 		return output;
 	}
 
@@ -266,13 +275,19 @@ private:
 
 template < class _Elem >
 Time_Format< _Elem > time_format( const _Elem* format )
-{ return format; }
+{ return Time_Format< _Elem >( format ); }
 template < class _Elem >
 Time_Format< _Elem > time_format( const std::basic_string< _Elem >& format )
-{ return format; }
+{ return Time_Format< _Elem >( format ); }
+template < class _Elem >
+Time_Format< _Elem > time_format( std::basic_string< _Elem >&& format )
+{ return Time_Format< _Elem >( format ); }
 template < class _Elem >
 Time_Format< _Elem > time_format( const std::basic_string_view< _Elem >& format )
-{ return format; }
+{ return Time_Format< _Elem >( format ); }
+template < class _Elem >
+Time_Format< _Elem > time_format( std::basic_string_view< _Elem >&& format )
+{ return Time_Format< _Elem >( format ); }
 
 using logstream = basic_logstream< char >;
 using wlogstream = basic_logstream< wchar_t >;
