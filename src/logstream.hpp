@@ -177,7 +177,7 @@ private:
 			case level::DEBUG: return "DEBUG";
 			case level::TRACE: return "TRACE";
 			case level::INFO: return "INFO";
-			case level::WARN: return "WARN";
+			case level::WARN: return "WARNING";
 			case level::ERROR: return "ERROR";
 			case level::FATAL: return "FATAL";
 
