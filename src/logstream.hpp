@@ -196,16 +196,20 @@ private:
 	std::basic_string< _Elem > timestamp()
 	{
 		std::chrono::zoned_time timestamp{ std::chrono::current_zone(), std::chrono::system_clock::now() };
-		return std::vformat( this->timestamp_format, std::make_format_args( timestamp ) );
+		return std::vformat( "{:" + this->timestamp_format + '}', std::make_format_args( timestamp ) );
 	}
 
-public:
+protected:
 	void start_log( level&& log_level )
 	{
 		// Print the current time to the log stream.
-		std::chrono::zoned_time timestamp{ std::chrono::current_zone(), std::chrono::system_clock::now() };
-		*this << std::vformat( this->time_format, std::make_format_args( timestamp ) );
-		this->start_log( std::move( log_level ) );
+		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '[' ) );
+		std::basic_string< char_type > current_timestamp = this->timestamp();
+		this->rdbuf()->sputn( current_timestamp.c_str(), current_timestamp.length() );
+		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ' ' ) );
+		this->print_level( std::move( log_level ) );
+		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ']' ) );
+		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ' ' ) );
 	}
 
 private:
