@@ -257,7 +257,7 @@ public:
 	}
 
 private:
-	const std::basic_string< _Elem > timestamp_format = "%Y-%m-%d %H:%M:%S %Z"; // Default time format for the log stream.
+	const std::basic_string< _Elem > timestamp_format = "%F %r"; // Default time format for the log stream. (YYYY-MM-DD HH:MM:SS AM/PM)
 };
 
 template < class _Elem >
