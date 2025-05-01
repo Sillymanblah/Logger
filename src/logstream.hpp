@@ -249,7 +249,10 @@ public:
 	basic_logstream& operator << ( level&& logging_level )
 	{
 		if ( this->is_loggable( logging_level ) )
+		{
+			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
 			this->start_log( std::move( logging_level ) );
+		}
 		return *this;
 	}
 
