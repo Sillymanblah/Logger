@@ -34,6 +34,8 @@ public:
 	};
 	// enum class level : BYTE
 
+	static constexpr uint8_t level_count = 6;
+
 	// Logger settings to determine logger behavior.
 	enum setting : BYTE
 	{
@@ -44,6 +46,8 @@ public:
 		ALL_SET		= PRINT_CRASH | MOVE_DATA,	// Both settings are enabled.
 	};
 	// enum class setting : BYTE
+
+	static constexpr uint8_t setting_count = 2;
 
 protected:
 	// Verifies that the log level settings are valid, can be any combination of the log levels.
@@ -102,8 +106,8 @@ private:
 	// Configuration settings for the logger to track the logging levels and settings.
 	struct config_settings
 	{
-		level level : 6;
-		setting settings : 2;
+		level level : level_count;
+		setting settings : setting_count;
 	} config;
 };
 
@@ -138,29 +142,88 @@ public:
 	// It does not makes sense to have a default constructor for this class, since a logger must have a file to log data to.
 	basic_logstream() = delete;
 
+private:
+	void log_settings()
+	{
+		constexpr size_t message_length = 25;
+		constexpr const char_type* level_messages[ level_count ] =
+		{
+			"DEBUG                    ",
+			"TRACE                    ",
+			"INFO                     ",
+			"WARNING                  ",
+			"ERROR                    ",
+			"FATAL                    "
+		};
+		constexpr const char_type* setting_messages[ setting_count ] =
+		{
+			"AUTOMATIC CRASH LOGGING  ",
+			"MOVE DATA WITH LOGGER    "
+		};
+		
+		for ( size_t index = 0; index < level_count; ++index )
+		{
+			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\t' ) );
+			this->rdbuf()->sputn( level_messages[ index ], message_length );
+			this->rdbuf()->sputn( ": ", 2 );
+			const char_type* enabled = this->is_loggable( static_cast< level >( 1 << index ) ) ? "ENABLED" : "DISABLED";
+			this->rdbuf()->sputn( enabled, std::strlen( enabled ) );
+			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
+		}
+		for ( size_t index = 0; index < setting_count; ++index )
+		{
+			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\t' ) );
+			this->rdbuf()->sputn( setting_messages[ index ], message_length );
+			this->rdbuf()->sputn( ": ", 2 );
+			const char_type* enabled = this->check_setting( static_cast< setting >( 1 << index ) ) ? "ENABLED" : "DISABLED";
+			this->rdbuf()->sputn( enabled, std::strlen( enabled ) );
+			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
+		}
+	}
+
+	void log_startup()
+	{
+		constexpr char_type start_message[] = "[SYSTEM]: Beginning a new log with the following settings:\n";
+		constexpr size_t start_message_length = sizeof( start_message ) / sizeof( char_type ); // -1 to remove the null terminator.
+
+
+		this->rdbuf()->sputn( start_message, start_message_length - 1 );
+		this->log_settings();
+	}
+
 public:
 	basic_logstream( const char* file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
-		file_stream( file_name, std::ios::out ), logger_base( std::move( log_level ), std::move( log_settings ) ) { this->setf( std::ios_base::unitbuf ); }
+		file_stream( file_name ), logger_base( log_level, log_settings )
+	{
+		this->setf( std::ios_base::unitbuf );
+		this->log_startup();
+	}
 		
 	basic_logstream( const std::string& file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
-		file_stream( file_name, std::ios::out ), logger_base( std::move( log_level ), std::move( log_settings ) ) { this->setf( std::ios_base::unitbuf ); }
+		file_stream( file_name ), logger_base( log_level, log_settings )
+	{
+		this->setf( std::ios_base::unitbuf );
+		this->log_startup();
+	}
 	
 	basic_logstream( const wchar_t* file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
-		file_stream( file_name, std::ios::out ), logger_base( std::move( log_level ), std::move( log_settings ) ) { this->setf( std::ios_base::unitbuf ); }
+		file_stream( file_name ), logger_base( log_level, log_settings )
+	{
+		this->setf( std::ios_base::unitbuf );
+		this->log_startup();
+	}
 		
 	basic_logstream( const std::wstring& file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
-		file_stream( file_name, std::ios::out ), logger_base( std::move( log_level ), std::move( log_settings ) ) { this->setf( std::ios_base::unitbuf ); }
+		file_stream( file_name ), logger_base( log_level, log_settings )
+	{
+		this->setf( std::ios_base::unitbuf );
+		this->log_startup();
+	}
 
 	basic_logstream( const basic_logstream& ) = delete;
 	basic_logstream( basic_logstream&& );
 	basic_logstream& operator = ( const basic_logstream& ) = delete;
 	basic_logstream& operator = ( basic_logstream&& );
-
-	~basic_logstream()
-	{
-		if ( this->check_setting( setting::PRINT_CRASH ) && std::uncaught_exceptions() ) this->log_exception_stack();
-		this->close();
-	}
 
 	std::basic_string< char_type > time_format( const char_type* format )
 	{
@@ -196,16 +259,19 @@ private:
 	std::basic_string< _Elem > timestamp()
 	{
 		std::chrono::zoned_time timestamp{ std::chrono::current_zone(), std::chrono::system_clock::now() };
-		return std::vformat( "{:" + this->timestamp_format + '}', std::make_format_args( timestamp ) );
+		return std::vformat( this->getloc(), "{:" + this->timestamp_format + '}', std::make_format_args( timestamp ) );
 	}
 
 protected:
 	void start_log( level&& log_level )
 	{
 		// Print the current time to the log stream.
+		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '[' ) );
 		std::basic_string< char_type > current_timestamp = this->timestamp();
 		this->rdbuf()->sputn( current_timestamp.c_str(), current_timestamp.length() );
+		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ' ' ) );
+		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '-' ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ' ' ) );
 		this->print_level( std::move( log_level ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ']' ) );
@@ -244,15 +310,29 @@ private:
 		catch( ... ) { this->log_exception_msg( "Unknown exception!" ); }
 	}
 
+	void log_forced_shutdown()
+	{
+		constexpr char_type shutdown_message[] = "[SYSTEM]: Logger was forced to shutdown due to an uncaught exception in the current scope!\n";
+		constexpr size_t shutdown_message_length = sizeof( shutdown_message ) / sizeof( char_type );
+
+		this->rdbuf()->sputn( shutdown_message, shutdown_message_length - 1 );
+	}
+
 public:
+	~basic_logstream()
+	{
+		if ( std::uncaught_exceptions() )
+		{
+			this->log_forced_shutdown();
+			if ( this->check_setting( setting::PRINT_CRASH ) ) this->log_exception_stack();
+		}
+	}
+
 	// Operator function to print the log level and current time to the log stream.
 	basic_logstream& operator << ( level&& logging_level )
 	{
-		if ( this->is_loggable( logging_level ) )
-		{
-			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
-			this->start_log( std::move( logging_level ) );
-		}
+		if ( this->is_loggable( logging_level ) ) this->start_log( std::move( logging_level ) );
+
 		return *this;
 	}
 
