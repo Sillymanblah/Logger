@@ -213,28 +213,28 @@ public:
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
 		this->setf( std::ios_base::unitbuf );
-		this->log_startup();
+		this->startup();
 	}
 		
 	basic_logstream( const std::string& file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
 		this->setf( std::ios_base::unitbuf );
-		this->log_startup();
+		this->startup();
 	}
 	
 	basic_logstream( const wchar_t* file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
 		this->setf( std::ios_base::unitbuf );
-		this->log_startup();
+		this->startup();
 	}
 		
 	basic_logstream( const std::wstring& file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
 		this->setf( std::ios_base::unitbuf );
-		this->log_startup();
+		this->startup();
 	}
 
 	basic_logstream( const basic_logstream& ) = delete;
