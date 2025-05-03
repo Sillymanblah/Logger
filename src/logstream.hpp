@@ -135,6 +135,7 @@ public:
 	using pos_type		= typename traits_type::pos_type;
 	using off_type		= typename traits_type::off_type;
 	
+	using output_stream = std::basic_ostream< char_type, traits_type >;
 	using file_stream 	= std::basic_ofstream< char_type, traits_type >;
 	using file_buffer 	= std::basic_filebuf< char_type, traits_type >;
 
@@ -186,6 +187,9 @@ private:
 		constexpr char_type start_message[] = "[SYSTEM]: Beginning a new log with the following settings:\n";
 		constexpr size_t start_message_length = sizeof( start_message ) / sizeof( char_type ); // -1 to remove the null terminator.
 
+		// Prepare the stream for output, if a failure occurs return instantly.
+		typename output_stream::sentry my_sentry( *this );
+		if ( !my_sentry ) throw std::ios_base::failure( "Logger startup and initial system log failed!" );
 
 		this->rdbuf()->sputn( start_message, start_message_length - 1 );
 		this->log_settings();
@@ -321,17 +325,21 @@ private:
 public:
 	~basic_logstream()
 	{
-		if ( std::uncaught_exceptions() )
-		{
-			this->log_forced_shutdown();
-			if ( this->check_setting( setting::PRINT_CRASH ) ) this->log_exception_stack();
-		}
+		if ( std::uncaught_exceptions() == 0 ) return;
+		
+		typename output_stream::sentry my_sentry( *this );
+		if ( !my_sentry ) return; // If the stream is not valid, return instantly.
+
+		this->log_forced_shutdown();
+		if ( this->check_setting( setting::PRINT_CRASH ) ) this->log_exception_stack();
 	}
 
 	// Operator function to print the log level and current time to the log stream.
 	basic_logstream& operator << ( level&& logging_level )
 	{
-		if ( this->is_loggable( logging_level ) ) this->start_log( std::move( logging_level ) );
+		typename output_stream::sentry my_sentry( *this );
+
+		if ( my_sentry && this->is_loggable( logging_level ) ) this->start_log( std::move( logging_level ) );
 
 		return *this;
 	}
