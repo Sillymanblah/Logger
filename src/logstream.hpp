@@ -144,10 +144,10 @@ public:
 	basic_logstream() = delete;
 
 private:
-	void log_settings()
+	void log_levels()
 	{
-		constexpr size_t message_length = 25;
-		constexpr const char_type* level_messages[ level_count ] =
+		constexpr size_t length = 25;
+		constexpr const char_type* levels[ level_count ] =
 		{
 			"DEBUG                    ",
 			"TRACE                    ",
@@ -156,25 +156,31 @@ private:
 			"ERROR                    ",
 			"FATAL                    "
 		};
-		constexpr const char_type* setting_messages[ setting_count ] =
-		{
-			"AUTOMATIC CRASH LOGGING  ",
-			"MOVE DATA WITH LOGGER    "
-		};
-		
+
 		for ( size_t index = 0; index < level_count; ++index )
 		{
 			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\t' ) );
-			this->rdbuf()->sputn( level_messages[ index ], message_length );
+			this->rdbuf()->sputn( levels[ index ], length );
 			this->rdbuf()->sputn( ": ", 2 );
 			const char_type* enabled = this->is_loggable( static_cast< level >( 1 << index ) ) ? "ENABLED" : "DISABLED";
 			this->rdbuf()->sputn( enabled, std::strlen( enabled ) );
 			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
 		}
+	}
+
+	void log_settings()
+	{
+		constexpr size_t length = 25;
+		constexpr const char_type* settings[ setting_count ] =
+		{
+			"AUTOMATIC CRASH LOGGING  ",
+			"MOVE DATA WITH LOGGER    "
+		};
+		
 		for ( size_t index = 0; index < setting_count; ++index )
 		{
 			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\t' ) );
-			this->rdbuf()->sputn( setting_messages[ index ], message_length );
+			this->rdbuf()->sputn( settings[ index ], length );
 			this->rdbuf()->sputn( ": ", 2 );
 			const char_type* enabled = this->check_setting( static_cast< setting >( 1 << index ) ) ? "ENABLED" : "DISABLED";
 			this->rdbuf()->sputn( enabled, std::strlen( enabled ) );
@@ -182,17 +188,24 @@ private:
 		}
 	}
 
-	void log_startup()
+	void do_startup()
 	{
 		constexpr char_type start_message[] = "[SYSTEM]: Beginning a new log with the following settings:\n";
 		constexpr size_t start_message_length = sizeof( start_message ) / sizeof( char_type ); // -1 to remove the null terminator.
 
+		this->rdbuf()->sputn( start_message, start_message_length - 1 );
+
+		this->log_levels();
+		this->log_settings();
+	}
+
+	void startup()
+	{
 		// Prepare the stream for output, if a failure occurs return instantly.
 		typename output_stream::sentry my_sentry( *this );
 		if ( !my_sentry ) throw std::ios_base::failure( "Logger startup and initial system log failed!" );
 
-		this->rdbuf()->sputn( start_message, start_message_length - 1 );
-		this->log_settings();
+		this->do_startup();
 	}
 
 public:
