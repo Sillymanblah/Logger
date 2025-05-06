@@ -12,6 +12,9 @@
 #include <chrono>
 #include <format>
 
+template < class _Elem >
+class basic_logstream;
+
 class logger_base
 {
 public:
@@ -109,6 +112,9 @@ private:
 		level level : level_count;
 		setting settings : setting_count;
 	} config;
+
+protected:
+	static basic_logstream< char >& my_log;
 };
 
 /**
@@ -151,11 +157,13 @@ private:
 		{
 			"DEBUG                    ",
 			"TRACE                    ",
-			"INFO                     ",
+			"INFORMATION              ",
 			"WARNING                  ",
 			"ERROR                    ",
 			"FATAL                    "
 		};
+
+		if ( this != &my_log ) my_log << TRACE << "Printing the logging levels...";
 
 		for ( size_t index = 0; index < level_count; ++index )
 		{
@@ -166,6 +174,8 @@ private:
 			this->rdbuf()->sputn( enabled, std::strlen( enabled ) );
 			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
 		}
+
+		if ( this != &my_log ) my_log << TRACE << "Finished logging the logging levels...";
 	}
 
 	void log_settings()
@@ -176,6 +186,8 @@ private:
 			"AUTOMATIC CRASH LOGGING  ",
 			"MOVE DATA WITH LOGGER    "
 		};
+
+		if ( this != &my_log ) my_log << TRACE << "Printing the logger settings...";
 		
 		for ( size_t index = 0; index < setting_count; ++index )
 		{
@@ -186,12 +198,16 @@ private:
 			this->rdbuf()->sputn( enabled, std::strlen( enabled ) );
 			this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
 		}
+
+		if ( this != &my_log ) my_log << TRACE << "Finished logging the logger settings...";
 	}
 
 	void do_startup()
 	{
 		constexpr char_type start_message[] = "[SYSTEM]: Beginning a new log with the following settings:\n";
 		constexpr size_t start_message_length = sizeof( start_message ) / sizeof( char_type ); // -1 to remove the null terminator.
+
+		if ( this != &my_log ) my_log << TRACE << "Logging the system startup message...";
 
 		this->rdbuf()->sputn( start_message, start_message_length - 1 );
 
@@ -201,24 +217,58 @@ private:
 
 	void startup()
 	{
+		if ( this != &my_log ) my_log << TRACE << "Entering the startup logging function for the new logger...";
+
 		// Prepare the stream for output, if a failure occurs return instantly.
 		typename output_stream::sentry my_sentry( *this );
-		if ( !my_sentry ) throw std::ios_base::failure( "Logger startup and initial system log failed!" );
+		if ( !my_sentry )
+		{
+			if ( this != &my_log ) my_log << ERROR << "Logger was invalid and unable to log the configuration settings!";
+			throw std::ios_base::failure( "Logger startup and initial system log failed!" );
+		}
+
+		if ( this != &my_log ) my_log << INFO << "Logger ready, beginning to log configuration settings...";
 
 		this->do_startup();
 	}
+	
+	template < class _Other_elem >
+	static std::string convert_to_bytes( const std::basic_string< _Other_elem >& formatted_string )
+	{
+		std::string byte_string;
+		byte_string.reserve( formatted_string.length() );
+		std::use_facet< std::ctype< _Other_elem > >( std::locale() ).narrow( formatted_string.data(), formatted_string.data() + formatted_string.length(), byte_string.data() );
+
+		return byte_string;
+	}
+
+	static void print_new_logger( const char* file_name )
+	{ my_log << INFO << "A new logstream has opened with the file name: " << file_name << '\n'; }
+	
+	static void print_new_logger( const std::string& file_name )
+	{ print_new_logger( file_name.c_str() ); }
+
+	static void print_new_logger( const wchar_t* file_name )
+	{ print_new_logger( std::wstring( file_name ) ); }
+	
+	static void print_new_logger( const std::wstring& file_name )
+	{ print_new_logger( convert_to_bytes( file_name ) ); }
 
 public:
 	basic_logstream( const char* file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
+		if ( this != &my_log ) print_new_logger( file_name );
+
 		this->setf( std::ios_base::unitbuf );
 		this->startup();
 	}
-		
+
 	basic_logstream( const std::string& file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
+		if ( this != &my_log ) print_new_logger( file_name );
+
 		this->setf( std::ios_base::unitbuf );
 		this->startup();
 	}
@@ -226,6 +276,8 @@ public:
 	basic_logstream( const wchar_t* file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
+		if ( this != &my_log ) print_new_logger( file_name );
+
 		this->setf( std::ios_base::unitbuf );
 		this->startup();
 	}
@@ -233,6 +285,8 @@ public:
 	basic_logstream( const std::wstring& file_name, level&& log_level = level::DEFAULT, setting&& log_settings = setting::ALL_SET ) :
 		file_stream( file_name ), logger_base( log_level, log_settings )
 	{
+		if ( this != &my_log ) print_new_logger( file_name );
+
 		this->setf( std::ios_base::unitbuf );
 		this->startup();
 	}
@@ -244,6 +298,8 @@ public:
 
 	std::basic_string< char_type > time_format( const char_type* format )
 	{
+		if ( this != &my_log ) my_log << TRACE << "Updating a logger's time format...";
+
 		std::basic_string< char_type > previous_format( this->timestamp_format );
 		this->timestamp_format = format;
 		return previous_format;
@@ -266,22 +322,21 @@ private:
 			default: return "";
 		}
 	}
-	
-	void print_level( level&& log_level )
-	{
-		const char* tag = level_tag( std::move( log_level ) );
-		this->rdbuf()->sputn( tag, std::strlen( tag ) );
-	}
 
 	std::basic_string< _Elem > timestamp()
 	{
-		std::chrono::zoned_time timestamp{ std::chrono::current_zone(), std::chrono::system_clock::now() };
+		using namespace std::chrono;
+		zoned_time timestamp( current_zone(), system_clock::now() );
 		return std::vformat( this->getloc(), "{:" + this->timestamp_format + '}', std::make_format_args( timestamp ) );
 	}
 
 protected:
 	void start_log( level&& log_level )
 	{
+		const char_type* tag = level_tag( std::move( log_level ) );
+
+		if ( tag == "" && this != &my_log ) my_log << ERROR << "Invalid section of code reached in the `level_tag` function!";
+
 		// Print the current time to the log stream.
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '\n' ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '[' ) );
@@ -290,7 +345,7 @@ protected:
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ' ' ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( '-' ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ' ' ) );
-		this->print_level( std::move( log_level ) );
+		this->rdbuf()->sputn( tag, std::strlen( tag ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ']' ) );
 		this->rdbuf()->sputc( std::use_facet< std::ctype< char_type > >( this->getloc() ).widen( ' ' ) );
 	}
@@ -329,7 +384,7 @@ private:
 
 	void log_forced_shutdown()
 	{
-		constexpr char_type shutdown_message[] = "[SYSTEM]: Logger was forced to shutdown due to an uncaught exception in the current scope!\n";
+		constexpr char_type shutdown_message[] = "\n\n[SYSTEM]: Logger was forced to shutdown due to an uncaught exception in the current scope!";
 		constexpr size_t shutdown_message_length = sizeof( shutdown_message ) / sizeof( char_type );
 
 		this->rdbuf()->sputn( shutdown_message, shutdown_message_length - 1 );
@@ -338,13 +393,29 @@ private:
 public:
 	~basic_logstream()
 	{
-		if ( std::uncaught_exceptions() == 0 ) return;
+		if ( this != &my_log ) my_log << TRACE << "A logger has reached the end of its life...";
+
+		if ( std::uncaught_exceptions() == 0 )
+		{
+			if ( this != &my_log ) my_log << TRACE << "The logger is being closed gracefully!";
+			return;
+		}
+
+		if ( this != &my_log ) my_log << INFO << "The logger was forced to shutdown due to an uncaught exception!";
 		
 		typename output_stream::sentry my_sentry( *this );
-		if ( !my_sentry ) return; // If the stream is not valid, return instantly.
+		if ( !my_sentry )
+		{
+			if ( this != &my_log ) my_log << ERROR << "The logger's state was invalid and could not log a forced shutdown message!";
+		}
+		else
+		{
+			if ( this != &my_log ) my_log << INFO << "Logger is still valid, logging a fatal shutdown message...";
+			this->log_forced_shutdown();
+			if ( this->check_setting( setting::PRINT_CRASH ) ) this->log_exception_stack();
+		}
 
-		this->log_forced_shutdown();
-		if ( this->check_setting( setting::PRINT_CRASH ) ) this->log_exception_stack();
+		if ( this != &my_log ) my_log << TRACE << "Closing the logger and its underlying stream...";
 	}
 
 	// Operator function to print the log level and current time to the log stream.

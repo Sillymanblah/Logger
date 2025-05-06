@@ -1,5 +1,8 @@
 #include "logstream.hpp"
 
+static logstream global_logger( "logger.log", logger_base::level::ALL_LEVELS, logger_base::setting::ALL_SET );
+logstream& logger_base::my_log = global_logger; // Global logger object to be used by the logger.
+
 // Verify that the log level settings are valid, can be any combination of the log levels.
 const logger_base::level& LOGGER_DLL_CALL logger_base::verify_level_settings( const logger_base::level& level_settings )
 {
