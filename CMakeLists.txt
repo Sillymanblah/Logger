@@ -17,6 +17,12 @@ add_executable(
 	src/io_functions.cpp
 )
 
+add_executable(
+	basic_logger_test
+	src/tests/basic_logger.cpp
+	src/logstream.cpp
+)
+
 add_test(
 	NAME IO_Functions
 	COMMAND io_functions_test <input.txt >output.txt
