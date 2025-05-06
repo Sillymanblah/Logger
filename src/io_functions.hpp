@@ -60,8 +60,8 @@ inline void do_binary_print( std::basic_ostream< _Elem, _Traits >& output, const
 	if ( !my_sentry ) return;
 	std::ios_base::iostate state = std::ios_base::goodbit;
 	
-	std::basic_string< _Elem > printed( output_size, _Elem( 0 ) ); // Prefix using the proper char type.
-	std::use_facet< std::ctype< _Elem > >( output.getloc() ).widen( buffer, buffer + output_size, printed.data() ); // Convert the prefix to the proper char type.
+	std::basic_string< _Elem > printed( output_size, _Elem( 0 ) ); // Output using the proper char type.
+	std::use_facet< std::ctype< _Elem > >( output.getloc() ).widen( buffer, buffer + output_size, printed.data() ); // Convert the output to the proper char type.
 	
 	std::streamsize fillspace = output.width( 0 ) - output_size;
 
