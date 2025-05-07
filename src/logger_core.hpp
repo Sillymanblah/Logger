@@ -15,6 +15,13 @@
 	#define LOGGER_DLL_API
 #endif
 
+// Macros for soon to be made changes that will allow us to set the default self-logging behavior based on whether we are in debug mode or not.
+#if defined( DEBUG ) || defined( _DEBUG )
+	#define LOG_SELF true
+#else
+	#define LOG_SELF false
+#endif
+
 // Macro to get the current line from the file, might not be safe to use with all build systems and compilers.
 #define FILE_LINE "\'" __FILE__ "\' line " str(__LINE__)
 

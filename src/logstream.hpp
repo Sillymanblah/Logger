@@ -129,8 +129,11 @@ private:
 
 };
 
-// Loose wrapper around the std::ofstream class, used to log messages to a file, has the `std::ios_base::unitbuf` flag set by default, this may be turned off and you can instead use std::endl for your own control.
-// Also note, that support is not provided for overloading the _Traits type for this class, since it the current timestamp operation requires `std::char_traits< _Elem >`.
+/**	Loose wrapper around the std::ofstream class, used to log messages to a file, has the `std::ios_base::unitbuf` flag set by default, this may be turned off and you can instead use std::endl for your own control.
+ *	Also note, that support is not provided for overloading the _Traits type for this class, since it the current timestamp operation requires `std::char_traits< _Elem >`.
+ *	@note Currently this class wraps `std::basic_ofstream`, but I do not like the loss of generality, so this will be modified to wrap `std::basic_ostream` instead and another class `basic_flogstream` will use `std::basic_filebuf`.
+ *	This is in part due to the goal to create a replacement for `std::clog` and `std::wclog`, which are built directly on `std::basic_ostream`.
+ */
 template < class _Elem >
 class basic_logstream : public std::basic_ofstream< _Elem, std::char_traits< _Elem > >, public logger_base
 {
