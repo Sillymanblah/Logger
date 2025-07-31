@@ -37,13 +37,13 @@ constexpr size_t system_settings_bits = 3;
 /// @brief Logging level is used to pass the current level being logged into the `basic_logstream` object to start a `basic_logstream_log`.
 enum class logging_level : char
 {
-	trace = developer_settings::trace, // Follow the program path, trace to see which functions are called.
-	debug = developer_settings::debug, // State information tracking to try to debug potential errors.
+	trace, // Follow the program path, trace to see which functions are called.
+	debug, // State information tracking to try to debug potential errors.
 
-	info = system_settings::info << developer_settings_bits, // Logging information to the user for events or state changes.
-	warn = system_settings::warn << developer_settings_bits, // Emitted when there is an issue in the state that does not affect program flow.
-	error = system_settings::error << developer_settings_bits, // Issues that are dangerous to the program and cause some parts to be unable to execute.
-	fatal = system_settings::fatal << developer_settings_bits, // Problems that result in a total program failure (either gracefully or ungracefully).
+	info, // Logging information to the user for events or state changes.
+	warn, // Emitted when there is an issue in the state that does not affect program flow.
+	error, // Issues that are dangerous to the program and cause some parts to be unable to execute.
+	fatal, // Problems that result in a total program failure (either gracefully or ungracefully).
 };
 
 // Forwarding declaration to use in the below class.
