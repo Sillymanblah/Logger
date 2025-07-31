@@ -1,13 +1,22 @@
 #include "../logstream.hpp"
 #include <iostream>
 
+constexpr const char* number_suffix( size_t number )
+{
+	switch ( number )
+	{
+	case 1: return "st";
+	case 2: return "nd";
+	case 3: return "rd";
+	default: return "th";
+	}
+}
+
 void do_random_logging( size_t thread_index, logstream& logger )
 {
 	constexpr size_t num_logs = 15;
 
 	std::srand( thread_index * 151 );
-
-	std::this_thread::sleep_for( std::chrono::seconds( 5 ) );
 
 	for ( size_t index = 1; index <= num_logs; ++index )
 	{
@@ -15,17 +24,9 @@ void do_random_logging( size_t thread_index, logstream& logger )
 
 		logging_level level = static_cast< logging_level >( level_int );
 
-		auto& my_log = logger << level << "Logging the " << index;
-		
-		switch ( index )
-		{
-		case 1: my_log << "st"; break;
-		case 2: my_log << "nd"; break;
-		case 3: my_log << "rd"; break;
-		default: my_log << "th"; break;
-		}
+		std::this_thread::sleep_for( std::chrono::milliseconds( rand() % 100 ) );
 
-		my_log << " log from thread #" << thread_index << " with level " << level_int << std::endl;
+		logger << level << "Logging the " << index << number_suffix( index ) << " log from thread #" << thread_index << " with level " << level_int << std::endl;
 	}
 }
 
@@ -37,12 +38,12 @@ int main()
 
 	std::cout << "Testing logging levels with the settings:\nDEV: NONE\nSYS: WARNINGS" << std::endl;
 
-	my_logger << logging_level::trace << "This is a TRACE log...\n";
-	my_logger << logging_level::debug << "This is a DEBUG log...\n";
-	my_logger << logging_level::info << "This is an INFO log...\n";
-	my_logger << logging_level::warn << "This is a WARN log...\n";
-	my_logger << logging_level::error << "This is an ERROR log...\n";
-	my_logger << logging_level::fatal << "This is a FATAL log...\n";
+	my_logger << logging_level::trace << "This is a TRACE log..." << std::endl;
+	my_logger << logging_level::debug << "This is a DEBUG log..." << std::endl;
+	my_logger << logging_level::info << "This is an INFO log..." << std::endl;
+	my_logger << logging_level::warn << "This is a WARN log..." << std::endl;
+	my_logger << logging_level::error << "This is an ERROR log..." << std::endl;
+	my_logger << logging_level::fatal << "This is a FATAL log..." << std::endl;
 
 	my_logger << logging_level::trace << "Starting " << thread_count << " threads to test with multithreading..." << std::flush;
 

@@ -135,7 +135,7 @@ public:
 		log_header( level );
 
 		// Return the log we created for the user to do output operations.
-		return new_log;
+		return std::move( new_log );
 	}
 
 protected:
@@ -174,6 +174,8 @@ public:
 		// If the stream pointer given to us is good, lock the associated mutex.
 		if ( parent_ptr ) lock = lock_type( parent_ptr->mutex );
 	}
+
+	log( log&& ) = default;
 
 public:
 	/// @brief Takes an argument to pass to the underlying stream object inside of `basic_logstream` to perform stream output.
