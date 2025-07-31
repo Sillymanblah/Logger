@@ -200,8 +200,10 @@ public:
 	/// @return A reference to `this` log for chaining output.
 	parent::log& operator << ( std::ios_base& ( *function )( std::ios_base& ) )
 	{
+		// Pass the pointer to the stream, this is the same as calling function( *stream );
 		if ( stream ) *stream << function;
 
+		// Return `this` object for further operations.
 		return *this;
 	}
 
@@ -211,8 +213,10 @@ public:
 	/// @return A reference to `this` log for chaining output.
 	parent::log& operator << ( stream_type& ( *function )( stream_type& ) )
 	{
+		// Pass the pointer to the stream, this is the same as calling function( *stream );
 		if ( stream ) *stream << function;
 
+		// Return `this` object for further operations.
 		return *this;
 	}
 
