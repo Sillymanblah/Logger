@@ -2,14 +2,15 @@
 #ifndef LOGSTREAM_HPP
 #define LOGSTREAM_HPP
 
+// Direct
+#include "time_fix.hpp"
+
+// STL
 #include <ostream>
 #include <thread>
 #include <mutex>
-#include <condition_variable>
 #include <concepts>
-
-// Temp
-#include <iostream>
+#include <iomanip>
 
 /// @brief Developer settings are individually toggleable.
 enum developer_settings : char
@@ -33,6 +34,15 @@ enum system_settings : char
 };
 
 constexpr size_t system_settings_bits = 3;
+
+/// @brief Structure to get the parts of the settings from the whole, used in `settings_data`.
+struct settings
+{
+	developer_settings dev : developer_settings_bits;
+	system_settings sys : system_settings_bits;
+
+	settings( developer_settings dev, system_settings sys ) : dev( dev ), sys( sys ) {}
+};
 
 /// @brief Logging level is used to pass the current level being logged into the `basic_logstream` object to start a `basic_logstream_log`.
 enum class logging_level : char
@@ -75,64 +85,99 @@ concept different_from = !std::same_as< std::remove_cvref_t< type_1 >, std::remo
 /// @tparam char_type The type of character this stream is responsible for, typically either `char` or `wchar_t`, but some OS's
 /// allow for use of `char16_t`, `char32_t`, etc.
 /// @tparam traits_type The traits class for mapping to and from `char_type`.
-template < class my_char, class my_traits = std::char_traits< my_char >, class my_mutex = std::mutex >
-class basic_logstream : virtual protected std::basic_ostream< my_char, my_traits >
+template < class my_char, class my_traits, class my_mutex >
+class basic_logstream : protected std::basic_ostream< my_char, my_traits >
 {
 protected:
 	using char_type = my_char;
 	using traits_type = my_traits;
 	using mutex_type = my_mutex;
+	
+	using buffer_type = std::basic_streambuf< my_char, my_traits >;
+	using format_type = std::basic_string_view< my_char >;
+	using lock_type = std::unique_lock< my_mutex >;
 
 	using super = std::basic_ostream< my_char, my_traits >;
-	using buffer_type = std::basic_streambuf< my_char, my_traits >;
 
 	// Forwarding declaration of a log class inside of basic_logstream so it has access to private members of this class.
 	class log;
 
-	/// @brief Structure to get the parts of the settings from the whole, used in `settings_data`.
-	struct settings_parts
-	{
-		developer_settings dev : developer_settings_bits;
-		system_settings sys : system_settings_bits;
-	};
-
-	/// @brief Union to store the data for our settings which can be either grouped or in parts.
-	union settings_data
-	{
-		settings_parts parts;
-		char grouped : developer_settings_bits + system_settings_bits;
-	};
+	/// @brief The default time format for a logstream, might expose it or make it mutable.
+	static constexpr format_type default_format = "%D %T";
 
 public:
-	basic_logstream( buffer_type* buffer, developer_settings dev, system_settings sys ) : super( buffer ), settings{ dev, sys } {}
+	/// @brief 
+	/// @param buffer 
+	/// @param settings 
+	/// @param time_format 
+	basic_logstream( buffer_type* buffer, settings settings, format_type time_format = default_format ) :
+		super( buffer ),
+		log_settings( settings ),
+		time_format( time_format )
+	{}
+
+	/// @brief 
+	/// @param buffer 
+	/// @param dev 
+	/// @param sys 
+	/// @param time_format 
+	basic_logstream( buffer_type* buffer, developer_settings dev, system_settings sys, format_type time_format = default_format ) :
+		basic_logstream( buffer, settings( dev, sys ) ) // Delegate to the other function.
+	{}
 
 private:
-	void log_header( logging_level level )
-	{
-		/// TODO: Add startup details here.
-	}
-
+	/// @brief An overload for specifically the system settings, which returns true if the sys level is logged.
+	///
+	/// @param level The system logging level.
+	/// @return `true` if `level` is logged, `false` otherwise.
 	bool is_logged( system_settings level )
-	{ return level <= ( settings.parts.sys ); }
+	{ return level <= ( this->log_settings.sys ); }
 
+	/// @brief An overload for specifically the developer settings, which returns true if the dev level is logged.
+	///
+	/// @param level The developer logging level.
+	/// @return `true` if `level` is logged, `false` otherwise.
 	bool is_logged( developer_settings level )
-	{ return level & ( settings.parts.dev ); }
+	{ return level & ( this->log_settings.dev ); }
 
 protected:
+	/// @brief Tells whether a logging level is currently being logged by the system, used to decide when to output.
+	///
+	/// @param level The desired level of an output log.
+	/// @return `true` if `level` is being logged, `false` otherwise.
 	bool is_logged( logging_level level )
 	{
 		switch ( level )
 		{
-			case logging_level::trace: return is_logged( trace );
-			case logging_level::debug: return is_logged( debug );
-			case logging_level::info: return is_logged( info );
-			case logging_level::warn: return is_logged( warn );
-			case logging_level::error: return is_logged( error );
-			case logging_level::fatal: return is_logged( fatal );
+			case logging_level::trace: return this->is_logged( developer_settings::trace );
+			case logging_level::debug: return this->is_logged( developer_settings::debug );
+			case logging_level::info: return this->is_logged( system_settings::info );
+			case logging_level::warn: return this->is_logged( system_settings::warn );
+			case logging_level::error: return this->is_logged( system_settings::error );
+			case logging_level::fatal: return this->is_logged( system_settings::fatal );
 
 			default: throw std::invalid_argument( "Logging level given to `basic_logstream` was invalid!" );
 		}
 	}
+private:
+	/// @brief Gets a pointer to a `std::tm` struct to use to put the time into the log.
+	/// @note This function stores the `std::time_t` object in the class variable `last_time` to be able to recall it later.
+	///
+	/// @return A `std::tm*` holding the current local time.
+	std::tm* get_current_time()
+	{
+		std::time( &this->last_time );
+		standardized::localtime_s( &this->last_time, &this->last_time_data );
+		return &this->last_time_data;
+	}
+
+protected:
+	/// @brief Print's the initial information such as timestamp and logging level string to start a log.
+	/// Do not call this method unless a log is actually starting!
+	///
+	/// @param level The level to use for the string (ex: "INFO").
+	void start_log( logging_level level )
+	{ *this << std::put_time( get_current_time(), time_format.data() ) << ' ' << level_string( level ) <<  " - "; }
 
 public:
 	/// @brief The only available `operator <<` for `basic_logstream` which locks the thread until we can create a `basic_logstream_log`.
@@ -141,21 +186,75 @@ public:
 	/// @return A `basic_logstream_log` for outputting the rest of the data.
 	log operator << ( logging_level level )
 	{
-		// Pass this into the log capture to obtain the mutex.
-		log new_log( is_logged( level ) ? this : nullptr );
+		// If we are not logging this data currently, create a log consumer.
+		if ( !this->is_logged( level ) ) return log( nullptr );
 
-		// Once we have created our log and locked the mutex within this thread, output the header.
-		log_header( level );
+		// Otherwise, pass `this` into the log to lock the mutex and reveal std::ostream.
+		log new_log( this );
+
+		// Start the log with any initial data.
+		this->start_log( level );
 
 		// Return the log we created for the user to do output operations.
 		return std::move( new_log );
 	}
 
-protected:
+	/// @brief Update the current settings with new settings.
+	///
+	/// @param log_settings The settings that will be set after this function call.
+	/// @return The old settings.
+	settings update_settings( settings log_settings )
+	{
+		// Before performing any operations, gain control of the mutex.
+		lock_type lock( this->mutex );
+
+		// Perform the update.
+		settings old = this->log_settings;
+		this->log_settings = log_settings;
+		return old;
+	}
+
+	/// @brief Update the current time format with a new one.
+	/// @param time_format The new time format to replace the old one.
+	/// @return The old time format.
+	format_type update_time_format( format_type time_format )
+	{
+		// Before performing any operations, gain control of the mutex.
+		lock_type lock( this->mutex );
+
+		// Perform the update.
+		format_type old = this->time_format;
+		this->time_format = time_format;
+		return time_format;
+	}
+
+	/// @brief Get the time of the last log (for whatever reason it may be needed)
+	/// @return The time that the most recent log was started.
+	std::time_t last_log_time()
+	{
+		// Before performing any operations, gain control of the mutex.
+		lock_type lock( this->mutex );
+
+		// Return the data since it is stable with the mutex being locked.
+		return this->last_time;
+	}
+
+private:
+	/// @brief The mutex that is used to take control of this logstream.
 	mutex_type mutex;
 
 	/// @brief The settings associated with this logstream
-	settings_data settings;
+	settings log_settings;
+
+	/// @brief The start time of the last log, used to store the time temporarily for `start_log` and `std::format`.
+	std::time_t last_time;
+
+	/// @brief The time struct for the last log's start time, also used for the storage duration to push data to the stream.
+	/// The primary difference is this member is not offered by a getter, one must create their own `std::tm` object if they need one.
+	std::tm last_time_data;
+
+	/// @brief The time format to use when logging the time.
+	format_type time_format;
 };
 
 /// @brief Logstream wrapper class that locks the associated mutex of `basic_logstream` for the duration of its life.
@@ -174,7 +273,6 @@ private:
 
 	using stream_type = std::basic_ostream< my_char, my_traits >;
 	using parent = basic_logstream< my_char, my_traits, my_mutex >;
-	using lock_type = std::unique_lock< my_mutex >;
 
 public:
 	/// @brief Starts a log for the logstream and locks other logs from coming until this object is destroyed.
