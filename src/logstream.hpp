@@ -46,9 +46,22 @@ enum class logging_level : char
 	fatal, // Problems that result in a total program failure (either gracefully or ungracefully).
 };
 
-// Forwarding declaration to use in the below class.
-template < class my_char, class my_traits, class my_mutex >
-class basic_logstream;
+/// @brief Helper function to get the associated logging level string for the logging levels.
+/// @param level The level to get the string for.
+/// @return A pointer to a character array containing the logging level name, or an empty string if an invalid value is passed in.
+inline constexpr const char* level_string( logging_level level )
+{
+	switch ( level )
+	{
+		case logging_level::trace: return "TRACE";
+		case logging_level::debug: return "DEBUG";
+		case logging_level::info: return "INFO";
+		case logging_level::warn: return "WARN";
+		case logging_level::error: return "ERROR";
+		case logging_level::fatal: return "FATAL";
+		default: return "";
+	}
+}
 
 /// @brief Concept for differentiation so we can ensure that there is a compile-time error to attempt to start another log from the current log.
 template < class type_1, class type_2 >
@@ -229,8 +242,5 @@ private:
 	/// @brief The lock that is blocking the `std::mutex` from being locked in the contained `logstream`.
 	lock_type lock;
 };
-
-using logstream = basic_logstream< char >;
-using wlogstream = basic_logstream< wchar_t >;
 
 #endif // LOGSTREAM_HPP
