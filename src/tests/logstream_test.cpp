@@ -1,4 +1,8 @@
+// Direct
 #include "../logstream.hpp"
+#include "../log_types.hpp"
+
+// STL
 #include <iostream>
 
 constexpr const char* number_suffix( size_t number )
@@ -34,9 +38,9 @@ int main()
 {
 	constexpr size_t thread_count = 10;
 
-	logstream my_logger( std::cerr.rdbuf(), developer_settings::none, system_settings::warn );
+	logstream my_logger( std::cerr.rdbuf(), developer_settings::trace, system_settings::warn );
 
-	std::cout << "Testing logging levels with the settings:\nDEV: NONE\nSYS: WARNINGS" << std::endl;
+	std::cout << "Testing logging levels with the settings:\nDEV: TRACE\nSYS: WARNINGS" << std::endl;
 
 	my_logger << logging_level::trace << "This is a TRACE log..." << std::endl;
 	my_logger << logging_level::debug << "This is a DEBUG log..." << std::endl;
@@ -45,7 +49,7 @@ int main()
 	my_logger << logging_level::error << "This is an ERROR log..." << std::endl;
 	my_logger << logging_level::fatal << "This is a FATAL log..." << std::endl;
 
-	my_logger << logging_level::trace << "Starting " << thread_count << " threads to test with multithreading..." << std::flush;
+	my_logger << logging_level::trace << "Starting " << thread_count << " threads to test with multithreading..." << std::endl;
 
 	std::thread threads[ thread_count ];
 
