@@ -2,7 +2,7 @@
 #ifndef LOG_BASE_HPP
 #define LOG_BASE_HPP
 
-// Direct
+/// DIRECT
 #include "log_settings.hpp"
 #include "log_types.hpp"
 

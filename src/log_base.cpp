@@ -1,8 +1,12 @@
+/// DIRECT
 #include "log_base.hpp"
 #include "log_stream.hpp"
 #include "time_fix.hpp"
 
-logstream log_base::my_log = /* Add construction here */;
+/// STL
+#include <iostream>
+
+logstream log_base::my_log = logstream( developer_settings::all + system_settings::all, std::cerr.rdbuf() );
 
 log_base::log_base( log_settings settings ) : settings( settings ) {}
 

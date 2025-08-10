@@ -2,6 +2,7 @@
 #ifndef LOG_BUFFER_HPP
 #define LOG_BUFFER_HPP
 
+/// STL
 #include <streambuf>
 #include <set>
 

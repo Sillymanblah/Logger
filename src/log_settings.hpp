@@ -1,8 +1,8 @@
-
 #pragma once
 #ifndef LOG_SETTINGS_HPP
 #define LOG_SETTINGS_HPP
 
+/// STL
 #include <cstdint>
 
 /// @brief Developer settings are individually toggleable.
@@ -74,33 +74,33 @@ class log_settings
 private:
 	/// @brief Constructs a @ref log_settings object from the raw data, used for efficiency with the bitwise operators.
 	/// @param raw The raw settings data to store in this object.
-	log_settings( uint8_t raw );
+	constexpr log_settings( uint8_t raw );
 
 public:
 	/// @brief Constructs a @ref log_settings with no settings enabled.
-	log_settings();
+	constexpr log_settings();
 
 	/// @brief Constructs a @ref log_settings object from the @ref developer_settings and @ref system_settings.
 	///
 	/// @param dev The `developer_settings` to enable for this `log_settings`.
 	/// @param sys The `system_settings` to enable for this `log_settings`. 
-	log_settings( developer_settings dev, system_settings sys );
+	constexpr log_settings( developer_settings dev, system_settings sys );
 
 	/// @brief Constructs a @ref log_settings object from the @ref system_settings and @ref developer_settings.
 	///
 	/// @param sys The `system_settings` to enable for this `log_settings`. 
 	/// @param dev The `developer_settings` to enable for this `log_settings`.
-	log_settings( system_settings sys, developer_settings dev );
+	constexpr log_settings( system_settings sys, developer_settings dev );
 
 	/// @brief Constructs a @ref log_settings object with only the @ref system_settings.
 	///
 	/// @param sys The `system_settings` to enable for this `log_settings`. 
-	log_settings( system_settings sys );
+	constexpr log_settings( system_settings sys );
 
 	/// @brief Constructs a @ref log_settings object with only the @ref developer_settings.
 	///
 	/// @param dev The `developer_settings` to enable for this `log_settings`.
-	log_settings( developer_settings dev );
+	constexpr log_settings( developer_settings dev );
 
 	/// @brief Copy constructor
 	/// @param other Another `log_settings` to copy the value of.

@@ -1,8 +1,8 @@
-// Direct
+/// DIRECT
 #include "../log_stream.hpp"
 #include "../log_types.hpp"
 
-// STL
+/// STL
 #include <iostream>
 
 constexpr const char* number_suffix( size_t number )
@@ -38,9 +38,7 @@ int main()
 {
 	constexpr size_t thread_count = 10;
 
-	logstream my_logger( std::cerr.rdbuf(), developer_settings::trace, system_settings::warn );
-
-	std::cout << "Testing logging levels with the settings:\nDEV: TRACE\nSYS: WARNINGS" << std::endl;
+	logstream my_logger( developer_settings::all + system_settings::all, std::cerr.rdbuf() );
 
 	my_logger << logging_level::trace << "This is a TRACE log..." << std::endl;
 	my_logger << logging_level::debug << "This is a DEBUG log..." << std::endl;

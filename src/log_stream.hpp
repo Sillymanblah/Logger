@@ -2,12 +2,12 @@
 #ifndef LOGSTREAM_HPP
 #define LOGSTREAM_HPP
 
-// Direct
+/// DIRECT
 #include "time_fix.hpp"
 #include "log_base.hpp"
 #include "log_buffer.hpp"
 
-// STL
+/// STL
 #include <ostream>
 #include <thread>
 #include <mutex>

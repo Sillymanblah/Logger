@@ -1,3 +1,4 @@
+/// DIRECT
 #include "log_settings.hpp"
 
 log_settings::log_settings() : data( 0 ) {}

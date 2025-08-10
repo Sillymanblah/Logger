@@ -1,6 +1,8 @@
+#pragma once
 #ifndef TIME_FIX_HPP
 #define TIME_FIX_HPP
 
+/// STL
 #include <ctime>
 
 namespace standardized
