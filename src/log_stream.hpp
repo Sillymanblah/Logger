@@ -206,7 +206,7 @@ public:
 	/// @brief Move constructor for a log, moves the underlying stream and passes off the lock.
 	///
 	/// @param other The other log to move into this location which we will take over managing the lock of.
-	log( log&& other ) : my_stream( std::move( other ) ), lock( std::move( other.lock ) ) {}
+	log( log&& other ) = default;
 
 private:
 	/// @brief The lock that is blocking the @ref `basic_logstream::mutex` from being used again until this `log` reaches the end of its lifetime.
