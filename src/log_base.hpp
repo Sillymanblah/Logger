@@ -18,6 +18,11 @@ public:
 	/// @brief Default constructor, initializes all class data to zero.
 	log_base() = default;
 
+	/// @brief Creates a new `log_base` with the passed-in settings active.
+	///
+	/// @param settings The @ref `log_settings` to set active for this logger.
+	log_base( log_settings settings );
+
 	/// @brief Copy constructor, deleted since the only thing that would make sense to copy would be the time, which is trivial to create a new log from the getter anyways.
 	///
 	/// @param other A constant reference to another `log_base` to copy.

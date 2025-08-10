@@ -4,6 +4,8 @@
 
 logstream log_base::my_log = /* Add construction here */;
 
+log_base::log_base( log_settings settings ) : settings( settings ) {}
+
 log_settings log_base::update_settings( log_settings new_settings )
 {
 	// Get the previous settings.
