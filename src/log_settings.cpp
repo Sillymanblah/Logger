@@ -56,16 +56,9 @@ log_settings& log_settings::enable( log_settings settings ) { return *this |= se
 
 log_settings& log_settings::toggle( log_settings settings ) { return *this ^= settings; }
 
-log_settings& log_settings::disable( log_settings settings )
-{
-	/// Invert the settings to turn off the settings we want to enable and then call the and operator.
-	this->data.raw &= ~settings.data.raw;
-	
-	/// Return a reference to ourself.
-	return *this;
-}
+log_settings& log_settings::disable( log_settings settings ) { return *this &= ~settings; }
 
-log_settings& log_settings::toggle() { return ~*this; }
+log_settings& log_settings::toggle() { return *this = ~*this; }
 
 log_settings operator + ( developer_settings dev, system_settings sys )
 { return log_settings( dev, sys ); }
