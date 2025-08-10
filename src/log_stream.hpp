@@ -66,9 +66,21 @@ public:
 		time_format( time_format )
 	{}
 
+	basic_logstream( log_settings settings, const typename my_buffer::buffer_set& buffers, format_type time_format = default_format ) :
+		my_log( settings ),
+		buffer( buffers ),
+		time_format( time_format )
+	{}
+
 	basic_logstream( log_settings settings, typename my_buffer::buffer_set&& buffers, format_type time_format = default_format ) :
 		my_log( settings ),
 		buffer( std::move( buffers ) ),
+		time_format( time_format )
+	{}
+
+	basic_logstream( log_settings settings, buffer_type* buffer, format_type time_format = default_format ) :
+		my_log( settings ),
+		buffer( buffer ),
 		time_format( time_format )
 	{}
 
