@@ -1,6 +1,8 @@
 /// DIRECT
 #include "log_settings.hpp"
 
+constexpr log_settings::log_settings( uint8_t raw ) : data{ raw } {}
+
 constexpr log_settings::log_settings() : data{} {}
 
 constexpr log_settings::log_settings( developer_settings dev, system_settings sys ) : data( { dev, sys } ) {}
