@@ -59,25 +59,13 @@ public:
 		time_format( time_format )
 	{}
 
-private:
-	/// @brief Gets a pointer to a `std::tm` struct to use to put the time into the log.
-	/// @note This function stores the `std::time_t` object in the class variable `last_time` to be able to recall it later.
-	///
-	/// @return A `std::tm*` holding the current local time.
-	std::tm* get_current_time()
-	{
-		std::time( &this->last_time );
-		standardized::localtime_s( &this->last_time, &this->last_time_data );
-		return &this->last_time_data;
-	}
-
 protected:
 	/// @brief Print's the initial information such as timestamp and logging level string to start a log.
 	/// Do not call this method unless a log is actually starting!
 	///
 	/// @param level The level to use for the string (ex: "INFO").
 	void start_log( logging_level level )
-	{ *this << std::put_time( get_current_time(), time_format.data() ) << ' ' << level_string( level ) <<  " - "; }
+	{ *this << std::put_time( this->log_start(), time_format.data() ) << " [" << level_string( level ) <<  "] - "; }
 
 public:
 	/// @brief The only available `operator <<` for `basic_logstream` which locks the thread until we can create a `basic_logstream_log`.
