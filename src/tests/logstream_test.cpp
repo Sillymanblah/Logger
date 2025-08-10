@@ -1,5 +1,5 @@
 // Direct
-#include "../logstream.hpp"
+#include "../log_stream.hpp"
 #include "../log_types.hpp"
 
 // STL

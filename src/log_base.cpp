@@ -1,5 +1,5 @@
 #include "log_base.hpp"
-#include "logstream.hpp"
+#include "log_stream.hpp"
 #include "time_fix.hpp"
 
 logstream log_base::my_log = /* Add construction here */;
