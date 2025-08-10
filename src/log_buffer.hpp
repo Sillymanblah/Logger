@@ -17,7 +17,7 @@
 template < class my_char, class my_traits = std::char_traits< my_char >, size_t my_size = 1024 >
 class basic_logbuf : public std::basic_streambuf< my_char, my_traits >
 {
-protected:
+public:
 	using char_type = my_char;
 	using char_ptr = char_type*;
 	using traits_type = my_traits;
@@ -31,7 +31,6 @@ protected:
 	using buffer_set = std::set< buffer_type* >;
 
 	static constexpr size_t buffer_size = my_size;
-	static constexpr size_t buffers_count = my_count;
 
 private:
 	/// @brief Initializes the super class' put area with our buffer by calling @ref `std::basic_streambuf::setp( char_type*, char_type* )`.

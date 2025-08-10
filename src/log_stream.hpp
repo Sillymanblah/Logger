@@ -33,7 +33,7 @@ concept different_from = !std::same_as< std::remove_cvref_t< type_1 >, std::remo
 template < class my_char, class my_traits, class my_mutex, size_t my_size >
 class basic_logstream : public log_base
 {
-protected:
+public:
 	using char_type = my_char;
 	using traits_type = my_traits;
 	using mutex_type = my_mutex;
@@ -44,6 +44,7 @@ protected:
 	using format_type = std::basic_string_view< char_type >;
 	using lock_type = std::unique_lock< mutex_type >;
 
+protected:
 	using my_log = log_base;
 	using my_buffer = basic_logbuf< char_type, traits_type, buffer_size >;
 
