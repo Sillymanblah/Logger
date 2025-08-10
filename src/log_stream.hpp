@@ -131,7 +131,7 @@ public:
 	/// 
 	/// @param level The `logging_level` of this log.
 	/// @return A `basic_logstream_log` for outputting the rest of the data.
-	log&& operator << ( logging_level level )
+	log operator << ( logging_level level )
 	{
 		// If we are not logging this data currently, create a log consumer.
 		if ( !this->is_logged( level ) ) return log( nullptr );
@@ -143,7 +143,7 @@ public:
 		this->start_log( new_log, level );
 
 		// Return the log we created for the user to do output operations.
-		return reinterpret_cast< log&& >( new_log );
+		return std::move( new_log );
 	}
 
 	/// @brief Update the current time format with a new one.
