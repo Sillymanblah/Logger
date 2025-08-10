@@ -81,7 +81,7 @@ private:
 
 /// @section Static
 /// @{
-public:
+protected:
 	/// @brief The log that all logs use for debugging their lifetime.
 	static logstream my_log;
 
