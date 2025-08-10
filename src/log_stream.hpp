@@ -90,7 +90,7 @@ public:
 	basic_logstream& operator = ( const basic_logstream& other ) = delete;
 
 private:
-	move( basic_logstream&& other )
+	void move( basic_logstream&& other )
 	{
 		// Before we start, lock their mutex so that we aren't interrupting any operations to avoid race conditions.
 		lock_type other_lock( other.mutex );
@@ -104,9 +104,6 @@ private:
 
 		// Move the time format.
 		this->time_format = std::move( other.time_format );
-
-		// Reset the other buffer to point to null.
-		other.buffer = nullptr;
 	}
 
 public:
@@ -169,7 +166,7 @@ private:
 	mutex_type mutex;
 
 	/// @brief The buffer that this logstream uses handle writing operations.
-	my_buffer* buffer;
+	my_buffer buffer;
 
 	/// @brief The time format to use when logging the time.
 	format_type time_format;
@@ -198,7 +195,7 @@ public:
 	/// @param logstream A pointer to the associated `basic_logstream` which we lock and use to output.
 	/// If that pointer is null, then this object will not lock any mutex and instead will just consume any output sent to it.
 	log( parent* logstream )
-	: my_stream( ( logstream != nullptr ? logstream->buffer : nullptr ) ) // NOTE: This might be an error, if so figure out a better way to handle it, perhaps by reverting to storing the stream in the parent class.
+	: my_stream( ( logstream != nullptr ? &logstream->buffer : nullptr ) ) // NOTE: This might be an error, if so figure out a better way to handle it, perhaps by reverting to storing the stream in the parent class.
 	{
 		// If the stream pointer given to us is good, lock the associated mutex.
 		if ( logstream ) lock = lock_type( logstream->mutex );
