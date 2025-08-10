@@ -60,8 +60,8 @@ std::tm* log_base::log_start()
 	// Get the current time.
 	this->last_time = std::time( NULL );
 	
-	// Convert it into the proper time format.
-	localtime_s( &this->last_time_data, &this->last_time );
+	// Convert it into the proper time format and return the pointer to the time data structure.
+	return standardized::localtime_s( &this->last_time, &this->last_time_data );
 }
 
 log_settings log_base::get_settings()
