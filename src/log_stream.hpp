@@ -163,17 +163,6 @@ public:
 		return time_format;
 	}
 
-	/// @brief Get the time of the last log (for whatever reason it may be needed)
-	/// @return The time that the most recent log was started.
-	std::time_t last_log_time()
-	{
-		// Before performing any operations, gain control of the mutex.
-		lock_type lock( this->mutex );
-
-		// Return the data since it is stable with the mutex being locked.
-		return this->last_time;
-	}
-
 private:
 	/// @brief The mutex that is used to take control of this logstream.
 	mutex_type mutex;
