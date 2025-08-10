@@ -129,14 +129,14 @@ public:
 	/// @brief A function to add a stream buffer to the list of associated stream buffers this log outputs to.
 	///
 	/// @param buffer A pointer to a @ref `std::basic_streambuf< char_type, traits_type >` to add to the set of buffers.
-	/// @return A boolean indicating if the buffer was added to the set (returns `false` only if the buffer is already used).
+	/// @return A boolean indicating if the buffer was added to the set (returns `false` if the buffer already exists in the set or was `nullptr`).
 	///
 	/// @note A call to this function with a `std::basic_streambuf` which is the base of another `basic_logbuf` is a mistake and invalid.
 	/// Operations performed at this level are not thread safe and thus using a pointer to another `basic_logbuf` defeats the entire purpose of @ref `basic_logstream`.
 	/// Additionally, this class is not responsible for managing the lifetime of those buffers, so if they need to be cleaned up, that is the responsibility of the developer.
 	/// Lastly, if `nullptr` is passed to this function it is ignored entirely.
 	bool add_buffer( buffer_type* buffer )
-	{ if ( buffer != nullptr ) buffers.insert( buffer ); }
+	{ return ( buffer != nullptr ) ? buffers.insert( buffer ).second : false; }
 
 	/// @brief An overload of @ref `basic_logbuf::add_buffer( @ref buffer_type* )` which specifically marks using another log buffer inside a log buffer as invalid.
 	/// This makes it so that implicit casting shouldn't happen and instead the compiler will throw an error.
