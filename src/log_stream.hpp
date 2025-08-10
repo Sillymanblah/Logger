@@ -5,6 +5,7 @@
 // Direct
 #include "time_fix.hpp"
 #include "log_base.hpp"
+#include "log_buffer.hpp"
 
 // STL
 #include <ostream>
