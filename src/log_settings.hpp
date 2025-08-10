@@ -11,7 +11,7 @@ enum class developer_settings : uint8_t
 	none = 0,					///< No dev settings enabled, each has to be explicitly enabled.
 	trace = 1 << 0,				///< Enable only trace messages.
 	debug = 1 << 1,				///< Enable only debug messages.
-	all_dev = trace | debug,	///< Enable both types of messages.
+	all = trace | debug,	///< Enable both types of messages.
 };
 
 constexpr size_t developer_settings_bits = 2;
@@ -29,7 +29,7 @@ enum class system_settings : uint8_t
 	non_fatal = non_errors | error,		///< Anything that is not a fatal error.
 	errors = error | fatal,				///< Errors only (fatal and non-fatal).
 	issues = warn | errors,				///< Problems with the program.
-	all_sys = non_errors | errors,		///< All system logs enabled.
+	all = non_errors | errors,		///< All system logs enabled.
 	suppress_warnings = info | errors,	///< Informational and errors only.
 	non_fatal_issues = warn | error,	///< Any issues that are not fatal
 };
