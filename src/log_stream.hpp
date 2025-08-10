@@ -53,19 +53,68 @@ protected:
 	static constexpr format_type default_format = "%D %T";
 
 public:
-	basic_logstream( log_settings settings, format_type time_format = default_format ) :
+	basic_logstream( format_type time_format = default_format ) :
 		my_log(),
 		buffer(),
 		time_format( time_format )
 	{}
+
+	basic_logstream( log_settings settings, format_type time_format = default_format ) :
+		my_log( settings ),
+		buffer(),
+		time_format( time_format )
+	{}
+
+	basic_logstream( log_settings settings, typename my_buffer::buffer_set&& buffers, format_type time_format = default_format ) :
+		my_log( settings ),
+		buffer( std::move( buffers ) ),
+		time_format( time_format )
+	{}
+
+	basic_logstream( const basic_logstream& other ) = delete;
+
+	basic_logstream& operator = ( const basic_logstream& other ) = delete;
+
+private:
+	move( basic_logstream&& other )
+	{
+		// Before we start, lock their mutex so that we aren't interrupting any operations to avoid race conditions.
+		lock_type other_lock( other.mutex );
+
+		// Move our parent class using it's move assignment.
+		// Ideally in the constructor case we would like to be able just use the move constructor, but we would be unable to lock their mutex before that.
+		static_cast< my_log& >( *this ) = std::move( other );
+		
+		// Move the buffer.
+		this->buffer = std::move( other.buffer );
+
+		// Move the time format.
+		this->time_format = std::move( other.time_format );
+
+		// Reset the other buffer to point to null.
+		other.buffer = nullptr;
+	}
+
+public:
+	basic_logstream( basic_logstream&& other )
+	{ this->move( std::move( other ) ); }
+
+	basic_logstream& operator = ( basic_logstream&& other )
+	{
+		// Lock our stream so any current operations are stopped until we finish the move.
+		lock_type my_lock( this->mutex );
+
+		// Perform the move.
+		this->move( std::move( other ) );
+	}
 
 protected:
 	/// @brief Print's the initial information such as timestamp and logging level string to start a log.
 	/// Do not call this method unless a log is actually starting!
 	///
 	/// @param level The level to use for the string (ex: "INFO").
-	void start_log( logging_level level )
-	{ *this << std::put_time( this->log_start(), time_format.data() ) << " [" << level_string( level ) <<  "] - "; }
+	void start_log( log& output, logging_level level )
+	{ output << std::put_time( this->log_start(), time_format.data() ) << " [" << level_string( level ) <<  "] - "; }
 
 public:
 	/// @brief The only available `operator <<` for `basic_logstream` which locks the thread until we can create a `basic_logstream_log`.
@@ -81,7 +130,7 @@ public:
 		log new_log( this );
 
 		// Start the log with any initial data.
-		this->start_log( level );
+		this->start_log( new_log, level );
 
 		// Return the log we created for the user to do output operations.
 		return std::move( new_log );
@@ -117,7 +166,7 @@ private:
 	mutex_type mutex;
 
 	/// @brief The buffer that this logstream uses handle writing operations.
-	my_buffer buffer;
+	my_buffer* buffer;
 
 	/// @brief The time format to use when logging the time.
 	format_type time_format;
