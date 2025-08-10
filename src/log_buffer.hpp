@@ -42,13 +42,33 @@ public:
 
 	/// @brief Constructs a @ref `basic_logbuf` which initializes the underlying @ref `std::basic_streambuf` and the set of @ref `basic_logbuf::buffers`.
 	/// @param buffers A set of buffers to move into our set of buffers to output to. If there is a `nullptr` in here, it will be removed.
+	basic_logbuf( const buffer_set& buffers ) : buffer_type(), buffers( buffers )
+	{
+		// Initialize our buffer.
+		this->init();
+
+		// Delete any `nullptr` buffers that were passed in since they are invalid.
+		this->buffers.erase( nullptr );
+	}
+
+	/// @brief Constructs a @ref `basic_logbuf` which initializes the underlying @ref `std::basic_streambuf` and the set of @ref `basic_logbuf::buffers`.
+	/// @param buffers A set of buffers to move into our set of buffers to output to. If there is a `nullptr` in here, it will be removed.
 	basic_logbuf( buffer_set&& buffers ) : buffer_type(), buffers( buffers )
 	{
 		// Initialize our buffer.
 		this->init();
 
-		// Delete any nullptr buffers that were passed in since they are invalid.
+		// Delete any `nullptr` buffers that were passed in since they are invalid.
 		this->buffers.erase( nullptr );
+	}
+
+	basic_logbuf( buffer_type* buffer ) : buffer_type(), buffers()
+	{
+		// Initialize our buffer.
+		this->init();
+
+		// Add our buffer if it is not `nullptr`.
+		if ( buffer != nullptr ) this->add_buffer( buffer );
 	}
 
 private:
