@@ -34,7 +34,7 @@ public:
 
 private:
 	/// @brief Initializes the super class' put area with our buffer by calling @ref `std::basic_streambuf::setp( char_type*, char_type* )`.
-	init() { buffer_type::setp( buffer, buffer + buffer_size + 1 ); }
+	void init() { buffer_type::setp( buffer, buffer + buffer_size + 1 ); }
 
 public:
 	/// @brief Default constructor for @ref `basic_logbuf` which initializes our underlying @ref `std::basic_streambuf` with our buffer and sets our output buffers to null.
