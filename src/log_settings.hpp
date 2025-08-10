@@ -158,8 +158,8 @@ public:
 
 	/// @brief Toggles all current settings for this logger, identical to how `operator ~` works.
 	///
-	/// @return A reference to `this` `log_settings` with all the settings inverted.
-	log_settings& operator ~ ();
+	/// @return A new `log_settings` with all the settings inverted.
+	log_settings operator ~ ();
 
 	/// @brief Performs bitwise or on the settings, this is identical to @ref `enable( log_settings )`.
 	///
@@ -212,7 +212,7 @@ private:
 			system_settings sys : system_settings_bits;
 		} structured;
 
-		uint8_t raw;
+		uint8_t raw : developer_settings_bits + system_settings_bits;
 	} data;
 };
 

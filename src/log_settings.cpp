@@ -1,15 +1,15 @@
 /// DIRECT
 #include "log_settings.hpp"
 
-log_settings::log_settings() : data( 0 ) {}
+constexpr log_settings::log_settings() : data( 0 ) {}
 
-log_settings::log_settings( developer_settings dev, system_settings sys ) : data( { dev, sys } ) {}
+constexpr log_settings::log_settings( developer_settings dev, system_settings sys ) : data( { dev, sys } ) {}
 
-log_settings::log_settings( system_settings sys, developer_settings dev ) : data( { dev, sys } ) {}
+constexpr log_settings::log_settings( system_settings sys, developer_settings dev ) : data( { dev, sys } ) {}
 
-log_settings::log_settings( system_settings sys ) : data( { developer_settings::none, sys } ) {}
+constexpr log_settings::log_settings( system_settings sys ) : data( { developer_settings::none, sys } ) {}
 
-log_settings::log_settings( developer_settings dev ) : data( { dev, system_settings::none } ) {}
+constexpr log_settings::log_settings( developer_settings dev ) : data( { dev, system_settings::none } ) {}
 
 bool log_settings::check( uint8_t raw_level ) { return this->data.raw & raw_level; }
 
@@ -23,14 +23,7 @@ log_settings log_settings::operator ^ ( log_settings settings ) { return log_set
 
 log_settings log_settings::operator & ( log_settings settings ) { return log_settings( this->data.raw & settings.data.raw ); }
 
-log_settings& log_settings::operator ~ ()
-{
-	// Call the built in operator for integral types.
-	~this->data.raw;
-
-	// Return a reference to ourself
-	return *this;
-}
+log_settings log_settings::operator ~ () { return log_settings( ~this->data.raw ); }
 
 log_settings& log_settings::operator |= ( log_settings settings )
 {
