@@ -64,7 +64,7 @@ std::tm* log_base::log_start()
 	localtime_s( &this->last_time_data, &this->last_time );
 }
 
-log_settings log_base::settings()
+log_settings log_base::get_settings()
 { return this->settings; }
 
 std::time_t log_base::last_log()

@@ -46,18 +46,32 @@ public:
 	log_settings disable_settings( log_settings new_settings );
 
 protected:
+	/// @brief Tells whether the given logging level is logged.
+	///
+	/// @param level The @ref `logging_level` to check against the logger's settings, if this number is an invalid type for the enumeration, returns false.
+	/// @return A boolean indicating whether the value is logged.
 	bool is_logged( logging_level level );
+
+	/// @brief Marks the start of a log by initializing our @ref `log_base::last_time` and @ref `log_base::last_time_data` with data for the current time.
+	///
+	/// @return A pointer to this object's `last_time_data`.
 	std::tm* log_start();
 
 public:
-	log_settings settings();
+	/// @brief Get the settings associated with this log.
+	///
+	/// @return The settings for this log.
+	log_settings get_settings();
+
+	/// @brief Get the start time of the last log.
+	///
+	/// @return The stored `std::time_t` of the most recent log start time.
 	std::time_t last_log();
 
 private:
 	/// @brief The settings associated with this logstream
 	log_settings settings;
 
-protected:
 	/// @brief The start time of the last log, used to store the time temporarily for `start_log` and `std::format`.
 	std::time_t last_time;
 
