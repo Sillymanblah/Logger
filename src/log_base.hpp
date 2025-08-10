@@ -15,11 +15,28 @@
 class log_base
 {
 public:
+	/// @brief Default constructor, initializes all class data to zero.
 	log_base() = default;
-	log_base( const log_base& ) = default;
-	log_base( log_base&& ) = default;
-	log_base& operator = ( const log_base& ) = default;
-	log_base& operator = ( log_base&& ) = default;
+
+	/// @brief Copy constructor, deleted since the only thing that would make sense to copy would be the time, which is trivial to create a new log from the getter anyways.
+	///
+	/// @param other A constant reference to another `log_base` to copy.
+	log_base( const log_base& other ) = delete;
+
+	/// @brief Move constructor, moves all associated data with the object before its destruction.
+	///
+	/// @param other An r-value of the `log_base` to move.
+	log_base( log_base&& other ) = default;
+
+	/// @brief Copy assigner, deleted since the only thing that would make sense to copy would be the time, which is trivial to create a new log from the getter anyways.
+	///
+	/// @param other A constant reference to another `log_base` to copy.
+	log_base& operator = ( const log_base& other ) = delete;
+
+	/// @brief Move assigner, moves all associated data into our current object replacing our data before its destruction.
+	///
+	/// @param other An r-value of the `log_base` to move.
+	log_base& operator = ( log_base&& other ) = default;
 
 	/// @brief Updates the @ref log_settings for this logger.
 	///
@@ -70,14 +87,14 @@ public:
 
 private:
 	/// @brief The settings associated with this logstream
-	log_settings settings;
+	log_settings settings{};
 
 	/// @brief The start time of the last log, used to store the time temporarily for `start_log` and `std::format`.
-	std::time_t last_time;
+	std::time_t last_time{};
 
 	/// @brief The time struct for the last log's start time, also used for the storage duration to push data to the stream.
 	/// The primary difference is this member is not offered by a getter, one must create their own `std::tm` object if they need one.
-	std::tm last_time_data;
+	std::tm last_time_data{};
 
 /// @section Static
 /// @{
