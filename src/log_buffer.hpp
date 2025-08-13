@@ -155,6 +155,13 @@ public:
 	buffer_type* remove_buffer( buffer_type* buffer )
 	{ return ( buffers.erase( buffer ) ) ? buffer : nullptr; }
 
+	/// @brief A function to get the buffers from this object to help with removing one via a call to @ref `remove_buffer( buffer_type* )`.
+	///
+	/// @return A constant reference to this object @ref `buffer_set`. 
+	///
+	/// @note Do NOT attempt to modify this set directly, if you need to add or remove a buffer, use `add_buffer` or `remove_buffer` instead.
+	const buffer_set& view_buffers() { return buffers; }
+
 private:
 	/// @brief The character buffer this stream object uses for it's put area.
 	my_char buffer[ buffer_size ];
