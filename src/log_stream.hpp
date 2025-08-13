@@ -30,7 +30,7 @@ concept different_from = !std::same_as< std::remove_cvref_t< type_1 >, std::remo
 /// @tparam my_mutex The mutex type for this logstream which must be lockable by using `std::unique_lock< my_mutex >( mutex_obj )`.
 /// @tparam my_size The size of the associated buffer inside the `basic_logbuf` this class uses to buffer the data.
 template < class my_char, class my_traits, class my_mutex, size_t my_size >
-class basic_logstream : public log_base
+class basic_logstream : public log_base, protected std::basic_ostream< my_char, my_traits >
 {
 public:
 	using char_type = my_char;
@@ -46,6 +46,7 @@ public:
 protected:
 	using my_log = log_base;
 	using my_buffer = basic_logbuf< char_type, traits_type, buffer_size >;
+	using my_stream = std::basic_ostream< char_type, traits_type >;
 
 	// Forwarding declaration of a log class inside of basic_logstream so it has access to private members of this class.
 	class log;
@@ -56,30 +57,35 @@ protected:
 public:
 	basic_logstream( format_type time_format = default_format ) :
 		my_log(),
+		my_stream( &this->buffer ),
 		buffer(),
 		time_format( time_format )
 	{}
 
 	basic_logstream( log_settings settings, format_type time_format = default_format ) :
 		my_log( settings ),
+		my_stream( &this->buffer ),
 		buffer(),
 		time_format( time_format )
 	{}
 
 	basic_logstream( log_settings settings, const typename my_buffer::buffer_set& buffers, format_type time_format = default_format ) :
 		my_log( settings ),
+		my_stream( &this->buffer ),
 		buffer( buffers ),
 		time_format( time_format )
 	{}
 
 	basic_logstream( log_settings settings, typename my_buffer::buffer_set&& buffers, format_type time_format = default_format ) :
 		my_log( settings ),
+		my_stream( &this->buffer ),
 		buffer( std::move( buffers ) ),
 		time_format( time_format )
 	{}
 
 	basic_logstream( log_settings settings, buffer_type* buffer, format_type time_format = default_format ) :
 		my_log( settings ),
+		my_stream( &this->buffer ),
 		buffer( buffer ),
 		time_format( time_format )
 	{}
@@ -123,8 +129,8 @@ protected:
 	/// Do not call this method unless a log is actually starting!
 	///
 	/// @param level The level to use for the string (ex: "INFO").
-	void start_log( log& output, logging_level level )
-	{ output << std::put_time( this->log_start(), time_format.data() ) << " [" << level_string( level ) <<  "] - "; }
+	void start_log( logging_level level )
+	{ *this << std::put_time( this->log_start(), time_format.data() ) << " [" << level_string( level ) <<  "] - "; }
 
 public:
 	/// @brief The only available `operator <<` for `basic_logstream` which locks the thread until we can create a `basic_logstream_log`.
@@ -140,10 +146,10 @@ public:
 		log new_log( this );
 
 		// Start the log with any initial data.
-		this->start_log( new_log, level );
+		this->start_log( level );
 
 		// Return the log we created for the user to do output operations.
-		return std::move( new_log );
+		return new_log;
 	}
 
 	/// @brief Update the current time format with a new one.
@@ -178,15 +184,15 @@ private:
 /// @tparam my_traits The associated traits type of the underlying stream object.
 /// @tparam my_mutex The associated mutex type of the `basic_logstream` so we can lock the mutex.
 template < class my_char, class my_traits, class my_mutex, size_t my_size >
-class basic_logstream< my_char, my_traits, my_mutex, my_size >::log : public std::basic_ostream< my_char, my_traits >
+class basic_logstream< my_char, my_traits, my_mutex, my_size >::log
 {
 private:
 	using char_type = my_char;
 	using traits_type = my_traits;
 	using mutex_type = my_mutex;
 
-	using my_stream = std::basic_ostream< my_char, my_traits >;
 	using parent = basic_logstream< my_char, my_traits, my_mutex >;
+	using stream_type = typename parent::my_stream;
 
 public:
 	/// @brief Starts a log for the logstream and locks other logs from coming until this object is destroyed.
@@ -194,18 +200,71 @@ public:
 	/// @param logstream A pointer to the associated `basic_logstream` which we lock and use to output.
 	/// If that pointer is null, then this object will not lock any mutex and instead will just consume any output sent to it.
 	log( parent* logstream )
-	: my_stream( ( logstream != nullptr ? &logstream->buffer : nullptr ) ) // NOTE: This might be an error, if so figure out a better way to handle it, perhaps by reverting to storing the stream in the parent class.
 	{
-		// If the stream pointer given to us is good, lock the associated mutex.
-		if ( logstream ) lock = lock_type( logstream->mutex );
+		// Update our stream pointer and if it is valid, lock the associated mutex.
+		if ( stream = logstream )
+		{
+			stream = logstream;
+			lock = lock_type( logstream->mutex );
+		}
 	}
 
 	/// @brief Move constructor for a log, moves the underlying stream and passes off the lock.
 	///
 	/// @param other The other log to move into this location which we will take over managing the lock of.
-	log( log&& other ) = default;
+	log( log&& other ) : stream( std::move( other.stream ) ), lock( std::move( other.lock ) ) { other.stream = nullptr; }
+
+	/// @brief Our destructor calls to `std::endl` to put a newline and flush the buffer at the end of our lifetime.
+	~log() { if ( stream ) *stream << std::endl; }
+
+	/// @brief Takes an argument to pass to the underlying stream object inside of `basic_logstream` to perform stream output.
+	///
+	/// @tparam arg_type The type of argument intended to pass to the underlying `std::ostream operator <<` call,
+	/// which must have a function defined for it otherwise this call is ill-formed. Note that this type is restricted
+	/// from being a `logging_level` type as that would deadlock the thread (and thus the program).
+	///
+	/// @param arg The argument to pass to the underlying `operator <<`.
+	/// @return A reference to `this` for chaining output operations.
+	template < different_from< logging_level > arg_type >
+	parent::log& operator << ( arg_type arg )
+	{
+		// If the stream exits, pass the arg directly to the `std::basic_ostream` object to print.
+		if ( stream ) *stream << arg;
+
+		// Return `this` object for further operations.
+		return *this;
+	}
+
+	/// @brief Function wrapper to pass function pointers to the stream object.
+	///
+	/// @param function A function pointer that performs a stream operation on `std::ios_base`.
+	/// @return A reference to `this` log for chaining output.
+	parent::log& operator << ( std::ios_base& ( *function )( std::ios_base& ) )
+	{
+		// Pass the pointer to the stream, this is the same as calling function( *stream );
+		if ( stream ) *stream << function;
+
+		// Return `this` object for further operations.
+		return *this;
+	}
+
+	/// @brief Function wrapper to pass function pointers to the stream object.
+	///
+	/// @param function A function pointer that performs a stream operation on the underlying `std::basic_ostream`.
+	/// @return A reference to `this` log for chaining output.
+	parent::log& operator << ( typename stream_type& ( *function )( typename stream_type& ) )
+	{
+		// Pass the pointer to the stream, this is the same as calling function( *stream );
+		if ( stream ) *stream << function;
+
+		// Return `this` object for further operations.
+		return *this;
+	}
 
 private:
+	/// @brief The stream object that we use.
+	stream_type* stream;
+
 	/// @brief The lock that is blocking the @ref `basic_logstream::mutex` from being used again until this `log` reaches the end of its lifetime.
 	lock_type lock;
 };
