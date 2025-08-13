@@ -16,7 +16,7 @@ constexpr const char* number_suffix( size_t number )
 	}
 }
 
-void do_random_logging( size_t thread_index, logstream& logger )
+void do_random_logging( uint32_t thread_index, logstream& logger )
 {
 	constexpr size_t num_logs = 15;
 
@@ -36,7 +36,7 @@ void do_random_logging( size_t thread_index, logstream& logger )
 
 int main()
 {
-	constexpr size_t thread_count = 10;
+	constexpr uint32_t thread_count = 10;
 
 	logstream my_logger( developer_settings::all + system_settings::all, std::cerr.rdbuf() );
 
@@ -51,7 +51,7 @@ int main()
 
 	std::thread threads[ thread_count ];
 
-	for ( size_t thread_num = 0; thread_num < thread_count; ++thread_num )
+	for ( uint32_t thread_num = 0; thread_num < thread_count; ++thread_num )
 	{
 		threads[ thread_num ] = std::thread( do_random_logging, thread_num, std::ref( my_logger ) );
 	}
