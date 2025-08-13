@@ -153,6 +153,7 @@ public:
 	}
 
 	/// @brief Update the current time format with a new one.
+	///
 	/// @param time_format The new time format to replace the old one.
 	/// @return The old time format.
 	format_type update_time_format( format_type time_format )
@@ -164,6 +165,55 @@ public:
 		format_type old = this->time_format;
 		this->time_format = time_format;
 		return time_format;
+	}
+
+public:
+	/// @brief Adds a buffer to the set of buffers this logstream flushes to when outputting data.
+	///
+	/// @param buffer A pointer to a buffer to output to.
+	/// @return A boolean indicating whether the buffer was added to the set.
+	///
+	/// @note See @ref `basic_logbuf::add_buffer` for more information.
+	bool add_buffer( buffer_type* buffer )
+	{
+		// Before we start, attempt to lock the mutex, only once it is locked do we continue.
+		lock_type lock( mutex );
+
+		// Call the associated function of our buffer and return it's value.
+		return this->buffer.add_buffer( buffer );
+	}
+
+	/// @brief This function is intentionally deleted to avoid bad implicit casts.
+	///
+	/// @param buffer A pointer to another `basic_logbuf`.
+	///
+	/// @note This is maintained for consistency with the definition in @ref `basic_logbuf::add_buffer( basic_logbuf* )`.
+	/// This provides a compiler error when trying to push a logbuffer as a child buffer.
+	bool add_buffer( my_buffer* buffer ) = delete;
+
+	/// @brief Attempts to remove the given buffer from the set and return the pointer back to the user.
+	///
+	/// @param buffer A pointer to the buffer that we wish to remove.
+	/// @return The same pointer if the item was successfully removed, otherwise `nullptr`
+	buffer_type* remove_buffer( buffer_type* buffer )
+	{
+		// Before we start, attempt to lock the mutex, only once it is locked do we continue.
+		lock_type lock( mutex );
+
+		// Call the associated function of our buffer and return it's value.
+		return this->buffer.remove_buffer( buffer );
+	}
+
+	/// @brief Helper getter for the buffers that we are outputting to for when one needs to remove a buffer from the list.
+	///
+	/// @return The set of buffer pointers this `basic_logstream` flushes to.
+	const typename my_buffer::buffer_set& output_buffers()
+	{
+		// Before we start, attempt to lock the mutex, only once it is locked do we continue.
+		lock_type lock( mutex );
+
+		// Call the associated function of our buffer and return it's value.
+		return this->buffer.view_buffers();
 	}
 
 private:
