@@ -12,6 +12,9 @@
 #include <mutex>
 #include <concepts>
 #include <iomanip>
+#include <vector>
+#include <filesystem>
+#include <fstream>
 
 /// @brief Concept for differentiation so we can ensure that there is a compile-time error to attempt to start another log from the current log.
 template < class type_1, class type_2 >
@@ -48,6 +51,9 @@ protected:
 	using my_buffer = basic_logbuf< char_type, traits_type, buffer_size >;
 	using my_stream = std::basic_ostream< char_type, traits_type >;
 
+	using file_buffer = std::basic_filebuf< char_type, traits_type >;
+	using file_buffers = std::vector< file_buffer* >;
+
 	// Forwarding declaration of a log class inside of basic_logstream so it has access to private members of this class.
 	class log;
 
@@ -55,6 +61,9 @@ protected:
 	static constexpr format_type default_format = "%D %T";
 
 public:
+	/// @brief 
+	///
+	/// @param time_format 
 	basic_logstream( format_type time_format = default_format ) :
 		my_log(),
 		my_stream( &this->buffer ),
@@ -62,6 +71,10 @@ public:
 		time_format( time_format )
 	{}
 
+	/// @brief 
+	///
+	/// @param settings 
+	/// @param time_format 
 	basic_logstream( log_settings settings, format_type time_format = default_format ) :
 		my_log( settings ),
 		my_stream( &this->buffer ),
@@ -69,6 +82,11 @@ public:
 		time_format( time_format )
 	{}
 
+	/// @brief 
+	///
+	/// @param settings 
+	/// @param buffers 
+	/// @param time_format 
 	basic_logstream( log_settings settings, const typename my_buffer::buffer_set& buffers, format_type time_format = default_format ) :
 		my_log( settings ),
 		my_stream( &this->buffer ),
@@ -76,6 +94,11 @@ public:
 		time_format( time_format )
 	{}
 
+	/// @brief 
+	///
+	/// @param settings 
+	/// @param buffers 
+	/// @param time_format 
 	basic_logstream( log_settings settings, typename my_buffer::buffer_set&& buffers, format_type time_format = default_format ) :
 		my_log( settings ),
 		my_stream( &this->buffer ),
@@ -83,6 +106,11 @@ public:
 		time_format( time_format )
 	{}
 
+	/// @brief 
+	///
+	/// @param settings 
+	/// @param buffer 
+	/// @param time_format 
 	basic_logstream( log_settings settings, buffer_type* buffer, format_type time_format = default_format ) :
 		my_log( settings ),
 		my_stream( &this->buffer ),
@@ -90,11 +118,21 @@ public:
 		time_format( time_format )
 	{}
 
+	/// @brief 
+	///
+	/// @param other 
 	basic_logstream( const basic_logstream& other ) = delete;
 
+	/// @brief 
+	///
+	/// @param other 
+	/// @return 
 	basic_logstream& operator = ( const basic_logstream& other ) = delete;
 
 private:
+	/// @brief 
+	///
+	/// @param other 
 	void move( basic_logstream&& other )
 	{
 		// Before we start, lock their mutex so that we aren't interrupting any operations to avoid race conditions.
@@ -103,7 +141,7 @@ private:
 		// Move our parent class using it's move assignment.
 		// Ideally in the constructor case we would like to be able just use the move constructor, but we would be unable to lock their mutex before that.
 		static_cast< my_log& >( *this ) = std::move( other );
-		
+
 		// Move the buffer.
 		this->buffer = std::move( other.buffer );
 
@@ -112,9 +150,16 @@ private:
 	}
 
 public:
+	/// @brief 
+	///
+	/// @param other 
 	basic_logstream( basic_logstream&& other )
 	{ this->move( std::move( other ) ); }
 
+	/// @brief 
+	///
+	/// @param other 
+	/// @return 
 	basic_logstream& operator = ( basic_logstream&& other )
 	{
 		// Lock our stream so any current operations are stopped until we finish the move.
@@ -123,6 +168,10 @@ public:
 		// Perform the move.
 		this->move( std::move( other ) );
 	}
+
+	/// @brief 
+	~basic_logstream()
+	{ for ( file_buffer* buffer : this->files ) delete buffer; }
 
 protected:
 	/// @brief Print's the initial information such as timestamp and logging level string to start a log.
@@ -177,7 +226,7 @@ public:
 	bool add_buffer( buffer_type* buffer )
 	{
 		// Before we start, attempt to lock the mutex, only once it is locked do we continue.
-		lock_type lock( mutex );
+		lock_type lock( this->mutex );
 
 		// Call the associated function of our buffer and return it's value.
 		return this->buffer.add_buffer( buffer );
@@ -198,7 +247,7 @@ public:
 	buffer_type* remove_buffer( buffer_type* buffer )
 	{
 		// Before we start, attempt to lock the mutex, only once it is locked do we continue.
-		lock_type lock( mutex );
+		lock_type lock( this->mutex );
 
 		// Call the associated function of our buffer and return it's value.
 		return this->buffer.remove_buffer( buffer );
@@ -210,11 +259,152 @@ public:
 	const typename my_buffer::buffer_set& output_buffers()
 	{
 		// Before we start, attempt to lock the mutex, only once it is locked do we continue.
-		lock_type lock( mutex );
+		lock_type lock( this->mutex );
 
 		// Call the associated function of our buffer and return it's value.
 		return this->buffer.view_buffers();
 	}
+
+private:
+	/// @brief 
+	///
+	/// @param buffer 
+	/// @return 
+	bool add_file_buffer( file_buffer* buffer )
+	{
+		// Wait until we can handle the mutex before updating any class data.
+		lock_type lock( this->mutex );
+
+		// Try to add this buffer to the list of buffers, if it fails, return failure.
+		if ( !this->buffers.add_buffer( buffer ) ) return false;
+
+		// Otherwise, add it to the list of self-handled buffers.
+		this->files.push_back( buffer );
+
+		// Return our success.
+		return true;
+	}
+
+public:
+	/// @brief 
+	///
+	/// @tparam some_path 
+	/// @param file_path 
+	/// @return 
+	template < class some_path = std::filesystem::path >
+	bool add_file( some_path file_path )
+	{
+		// Create a new file buffer in dynamic memory.
+		file_buffer* buffer = new file_buffer;
+		
+		// Try to open the desired file and then add the file buffer to our list of buffers we flush to, and if we succeed, return true.
+		if ( buffer->open( file_path ) && this->add_file_buffer( buffer ) ) return true;
+
+		// If we failed, delete the buffer and return failure.
+		delete buffer;
+		return false;
+	}
+
+	/// @brief 
+	///
+	/// @param file_name 
+	/// @return 
+	bool add_file( std::string file_name )
+	{
+		// Create a new file buffer in dynamic memory.
+		file_buffer* buffer = new file_buffer;
+		
+		// Try to open the desired file and then add the file buffer to our list of buffers we flush to, and if we succeed, return true.
+		if ( buffer->open( file_name ) && this->add_file_buffer( buffer ) ) return true;
+
+		// If we failed, delete the buffer and return failure.
+		delete buffer;
+		return false;
+	}
+
+	/// @brief 
+	///
+	/// @param file_name 
+	/// @return 
+	bool add_file( std::wstring file_name )
+	{
+		// Create a new file buffer in dynamic memory.
+		file_buffer* buffer = new file_buffer;
+		
+		// Try to open the desired file and then add the file buffer to our list of buffers we flush to, and if we succeed, return true.
+		if ( buffer->open( file_name ) && this->add_file_buffer( buffer ) ) return true;
+
+		// If we failed, delete the buffer and return failure.
+		delete buffer;
+		return false;
+	}
+
+	/// @brief 
+	///
+	/// @param file_name 
+	/// @return 
+	bool add_file( const wchar_t* file_name )
+	{
+		// Create a new file buffer in dynamic memory.
+		file_buffer* buffer = new file_buffer;
+		
+		// Try to open the desired file and then add the file buffer to our list of buffers we flush to, and if we succeed, return true.
+		if ( buffer->open( file_name ) && this->add_file_buffer( buffer ) ) return true;
+
+		// If we failed, delete the buffer and return failure.
+		delete buffer;
+		return false;
+	}
+
+	/// @brief 
+	///
+	/// @param file_name 
+	/// @return 
+	bool add_file( const char* file_name )
+	{
+		// Create a new file buffer in dynamic memory.
+		file_buffer* buffer = new file_buffer;
+		
+		// Try to open the desired file and then add the file buffer to our list of buffers we flush to, and if we succeed, return true.
+		if ( buffer->open( file_name ) && files.insert( file ).second ) return true;
+
+		// If we failed, delete the buffer and return failure.
+		delete buffer;
+		return false;
+	}
+
+	/// @brief 
+	///
+	/// @param index 
+	void remove_file( size_t index )
+	{
+		// Wait until we control the mutex before we do any class operations.
+		lock_type lock( this->mutex );
+
+		// Ensure the index exists within the range.
+		if ( this->files.size() <= index ) return;
+
+		// Get the buffer from our vector of buffers.
+		file_buffer* buffer = this->files[ index ];
+
+		// Erase the buffer from the vector.
+		this->files.erase( this->files.front() + index );
+		
+		// Remove it from the set of buffers we flush to.
+		// NOTE: It may have already been removed at this point, but that is ok, because we will just ignore the null return value.
+		this->buffer.remove_buffer( buffer );
+
+		// Unlock mutex since we are done with the operations within the class.
+		lock.unlock();
+
+		// Delete the associated memory.
+		delete buffer;
+	}
+
+	/// @brief 
+	///
+	/// @return 
+	const file_buffers& our_files() { return files; }
 
 private:
 	/// @brief The mutex that is used to take control of this logstream.
@@ -225,6 +415,9 @@ private:
 
 	/// @brief The time format to use when logging the time.
 	format_type time_format;
+
+	/// @brief The set of internally managed file buffers we are outputting to.
+	file_buffers files;
 };
 
 /// @brief Logstream wrapper class that locks the associated mutex of `basic_logstream` for the duration of its life.
