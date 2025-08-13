@@ -68,7 +68,7 @@ public:
 		this->init();
 
 		// Add our buffer if it is not `nullptr`.
-		if ( buffer != nullptr ) this->add_buffer( buffer );
+		this->add_buffer( buffer );
 	}
 
 private:
