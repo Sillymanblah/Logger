@@ -121,6 +121,9 @@ protected:
 		// Then for each stream we are storing in the list of buffers, try to synchronize it with our data and return `-1` if it fails.
 		for ( buffer_type* buffer : buffers ) success &= sync_buffer( buffer, start, count );
 
+		// Reset the buffer to empty state to continue adding data, we can do this by simply letting `init` set the pointers back.
+		this->init();
+
 		// If we were successful, return `0`, otherwise `-1`.
 		return success - 1;
 	}
