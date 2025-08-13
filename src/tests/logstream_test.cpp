@@ -30,7 +30,7 @@ void do_random_logging( size_t thread_index, logstream& logger )
 
 		std::this_thread::sleep_for( std::chrono::milliseconds( rand() % 100 ) );
 
-		logger << level << "Logging the " << index << number_suffix( index ) << " log from thread #" << thread_index << " with level " << level_int << std::endl;
+		logger << level << "Logging the " << index << number_suffix( index ) << " log from thread #" << thread_index;
 	}
 }
 
@@ -40,14 +40,14 @@ int main()
 
 	logstream my_logger( developer_settings::all + system_settings::all, std::cerr.rdbuf() );
 
-	my_logger << logging_level::trace << "This is a TRACE log..." << std::endl;
-	my_logger << logging_level::debug << "This is a DEBUG log..." << std::endl;
-	my_logger << logging_level::info << "This is an INFO log..." << std::endl;
-	my_logger << logging_level::warn << "This is a WARN log..." << std::endl;
-	my_logger << logging_level::error << "This is an ERROR log..." << std::endl;
-	my_logger << logging_level::fatal << "This is a FATAL log..." << std::endl;
+	my_logger << logging_level::trace << "This is a TRACE log...";
+	my_logger << logging_level::debug << "This is a DEBUG log...";
+	my_logger << logging_level::info << "This is an INFO log...";
+	my_logger << logging_level::warn << "This is a WARN log...";
+	my_logger << logging_level::error << "This is an ERROR log...";
+	my_logger << logging_level::fatal << "This is a FATAL log...";
 
-	my_logger << logging_level::trace << "Starting " << thread_count << " threads to test with multithreading..." << std::endl;
+	my_logger << logging_level::trace << "Starting " << thread_count << " threads to test with multithreading...";
 
 	std::thread threads[ thread_count ];
 
